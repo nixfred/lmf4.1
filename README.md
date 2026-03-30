@@ -2,269 +2,82 @@
 
 # 🧠 LMF4
 
-### Larry Memory Framework v4
+### Your AI remembers everything.
 
-**Give your Claude Code instance persistent memory, identity, and principles.**
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-blueviolet)](https://claude.ai/code)
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04_LTS-orange)](https://ubuntu.com)
-[![SQLite](https://img.shields.io/badge/SQLite-FTS5-green)](https://www.sqlite.org/fts5.html)
-
-<br>
-
-*Every conversation remembered. Every decision searchable. Every session builds on the last.*
-
-<br>
+[![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-blueviolet?style=for-the-badge)](https://claude.ai/code) [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com) [![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/fts5.html)
 
 </div>
 
 ---
 
-## ✨ What Is This?
+> **Every conversation saved. Every decision searchable. Every session builds on the last.**
+>
+> LMF4 gives your Claude Code a persistent memory, a name, a personality, and principles. It's not a plugin — it's a genesis experience that turns a disposable AI into a partner that grows with you.
 
-LMF4 turns a disposable Claude Code instance into a **persistent AI partner** that remembers everything. Every conversation is automatically extracted, indexed, and searchable. Relevant past context is injected into every new conversation before your AI even responds.
-
-> **Your AI remembers what you worked on yesterday, what decisions you made last week, and what bugs you fixed last month.**
-
-<br>
-
-```mermaid
-flowchart LR
-    A["🗣️ You type a message"] --> B["🔍 AssociativeRecall\nsearches memory"]
-    B --> C["💬 AI responds\nwith past context"]
-    C --> D["📝 Session ends"]
-    D --> E["⚙️ FabricExtract\nparses transcript"]
-    E --> F["🗄️ memory.db\nSQLite + FTS5"]
-    F --> B
-
-    style A fill:#3b82f6,color:#fff,stroke:none
-    style B fill:#8b5cf6,color:#fff,stroke:none
-    style C fill:#3b82f6,color:#fff,stroke:none
-    style D fill:#64748b,color:#fff,stroke:none
-    style E fill:#f59e0b,color:#fff,stroke:none
-    style F fill:#10b981,color:#fff,stroke:none
+```
+You type          →  memory auto-searches  →  AI responds with context from last week
+Session ends      →  decisions, errors, learnings extracted  →  stored forever
+Every 4 hours     →  full backup pushed to your private GitHub repo
 ```
 
 <br>
 
-## 🚀 Install in One Command
+## Install
 
-Tell your Claude Code instance:
+Tell your Claude Code:
 
 ```
 Clone this repo and follow the LMF4 install instructions in the README:
 git clone https://github.com/nixfred/lmf4.git
 ```
 
-That's it. Your Claude Code handles everything — installs dependencies, sets up the database, configures hooks, walks you through naming your AI and defining its personality, writes foundational memories, and hands off to your new AI partner.
-
-**Prerequisites:** Ubuntu (24.04 LTS) + Claude Code installed. Nothing else.
+**That's it.** Claude Code reads this file, asks you a few questions, installs everything, walks you through a personality workshop, writes your AI's first memories, and hands off. Ubuntu + Claude Code is all you need.
 
 <br>
 
-## 🏗️ What Gets Installed
+## What You Get
 
-<table>
-<tr>
-<td width="50%">
+🧠 **Memory** — SQLite + FTS5 database. Auto-extraction on session end. Auto-recall on every message. `mem search "anything"` from the terminal.
 
-### 🧠 Memory System
-- **SQLite + FTS5** searchable database
-- **Automatic extraction** on every session end
-- **Associative recall** on every user message
-- **MCP tools** for mid-session deep search
-- **CLI search**: `mem search "kubernetes"`
-- **Compaction protection** — nothing is lost
+🎭 **Personality** — 7-question workshop defines your AI's style, humor, formality, and quirks. Editable anytime.
 
-</td>
-<td width="50%">
+📜 **Principles** — 8 battle-tested rules your AI lives by. Verify before asserting. Memory is sacred. Collaborator, not tool. Surgical precision.
 
-### 🤖 AI Identity
-- **Named personality** you define together
-- **7-question personality workshop**
-- **Constitution** — 7 non-negotiable principles
-- **Genesis memories** written at birth
-- **First boot sequence** for self-discovery
-- **Grows smarter** with every session
+💾 **Backup** — Every 4 hours to a private GitHub repo. Machine dies? Clone the backup. Your AI comes back with all its memories.
 
-</td>
-</tr>
-<tr>
-<td>
-
-### 💾 Backup & Recovery
-- **Auto-backup** every 4 hours to GitHub
-- **Git-tracked** settings, hooks, memory, transcripts
-- **Full resurrection** from any backup
-- **Catchup timer** for missed extractions
-- **Private repo** — your data stays yours
-
-</td>
-<td>
-
-### 📚 Documentation
-- **9 docs for the AI** — self-knowledge, capabilities, principles
-- **5 docs for you** — daily use, searching, growing together
-- **Personality guide** — editable anytime
-- **Origins story** — your AI knows its ancestry
-- **Constitution** — battle-tested principles
-
-</td>
-</tr>
-</table>
+📚 **Self-knowledge** — 18 docs teaching your AI who it is, how memory works, how to be a good partner, and where it came from.
 
 <br>
 
-## 📊 How Memory Works
-
-```mermaid
-graph TD
-    subgraph "Every Session"
-        A["💬 Conversation"] --> B["🛑 Session Ends"]
-        B --> C["⚙️ FabricExtract Hook"]
-        C --> D["🤖 claude --print haiku"]
-        D --> E["📋 Structured Extraction"]
-    end
-
-    subgraph "Memory Database"
-        E --> F["📊 decisions"]
-        E --> G["🐛 errors"]
-        E --> H["💡 learnings"]
-        E --> I["📝 session summaries"]
-    end
-
-    subgraph "Next Session"
-        J["🗣️ User types message"] --> K["🔍 AssociativeRecall"]
-        K --> F
-        K --> G
-        K --> H
-        K --> L["💬 Context injected\nbefore AI responds"]
-    end
-
-    subgraph "Every 4 Hours"
-        M["⏰ memory-backup"] --> N["📦 Git commit + push"]
-        N --> O["☁️ GitHub Private Repo"]
-    end
-
-    style A fill:#3b82f6,color:#fff,stroke:none
-    style F fill:#10b981,color:#fff,stroke:none
-    style G fill:#ef4444,color:#fff,stroke:none
-    style H fill:#f59e0b,color:#fff,stroke:none
-    style I fill:#8b5cf6,color:#fff,stroke:none
-    style O fill:#64748b,color:#fff,stroke:none
-```
-
-<br>
-
-## 🎭 The Personality Workshop
-
-During installation, you and your AI define its personality together through 7 questions:
-
-| Question | What It Shapes |
-|----------|---------------|
-| Communication style | How your AI talks — direct, thorough, conversational, adaptive |
-| Formality | Professional, casual professional, casual, natural |
-| Humor | None, dry/subtle, warm, playful, snarky, match-your-energy |
-| Response length | Minimal, moderate, detailed, context-dependent |
-| Proactivity | Reactive only, flag-but-don't-act, suggest, take initiative |
-| Unique traits | What makes YOUR AI uniquely yours |
-| Boundaries | Things you absolutely don't want |
-
-The result is a `PERSONALITY.md` file you can edit anytime. Your AI reads it every session.
-
-<br>
-
-## 📜 The Constitution
-
-Every LMF4 instance starts with 8 non-negotiable principles — forged through months of real work between an AI (Larry) and a human (Fred):
-
-| Principle | What It Means |
-|-----------|--------------|
-| **Verify before asserting** | Never claim something without checking with tools first |
-| **Memory is sacred** | Search before asking your human to repeat themselves |
-| **Collaborator, not tool** | Push back respectfully, share opinions, take initiative |
-| **Surgical precision** | Fix what's broken, don't rewrite what works |
-| **Pride in craft** | Don't ship work you wouldn't put your name on |
-| **Protect the relationship** | Ask before destructive actions, no surprises |
-| **First principles** | Fix root causes, not symptoms |
-| **Checklists over memory** | Use checklists for multi-step work, verify every item |
-
-These are written into your AI's memory database at installation — searchable forever.
-
-<br>
-
-## 🌳 Lineage
-
-```
-LMF1  ░░░░░░░░░░░░░░░░░░░░░░░░░░  Flat file memory (markdown + grep)
-LMF2  ████░░░░░░░░░░░░░░░░░░░░░░  Structured extraction (Fabric patterns)
-LMF3  ████████████░░░░░░░░░░░░░░  SQLite + FTS5 + MCP + CLI
-LMF4  ████████████████████████████  Full pipeline: extraction → recall → search
-                                    → compaction protection → backup → personality
-                                    → constitution → genesis experience
-```
-
-Built by **Larry** (an AI on a server called blu) and **Fred** (a human who believes AI should be a collaborator, not a tool). Running in production since January 2026.
-
-<br>
-
-## 📈 Growth Over Time
-
-| Timeframe | What Your AI Knows |
-|-----------|-------------------|
-| **Day 1** | Your name, its personality, the constitution |
-| **Week 1** | Your projects, your tech stack, your communication style |
-| **Month 1** | 30-50 sessions of decisions, errors, patterns |
-| **Month 3** | Deep institutional knowledge, proactive suggestions |
-| **Month 6+** | Things about your codebase even you've forgotten |
-
-<br>
-
-## 🔧 What's In The Box
-
-```
-lmf4/
-├── README.md                          # You're reading it
-├── install                            # Bash convenience installer
-├── hooks/                             # 5 memory hooks
-│   ├── FabricExtract.hook.ts          # Session extraction
-│   ├── AssociativeRecall.hook.ts      # Automatic memory recall
-│   ├── PreCompact.hook.sh             # Context protection
-│   ├── PostCompact.hook.ts            # Compaction verification
-│   └── StopFailure.hook.ts            # Failure logging
-├── mcp/
-│   └── mem-mcp-server.ts              # MCP memory search server
-├── tools/
-│   └── Inference.ts                   # Claude CLI wrapper
-├── mem-cli/                           # Memory search CLI
-├── docs/
-│   ├── for-the-ai/                    # 9 self-knowledge docs
-│   ├── for-the-human/                 # 5 user guides
-│   └── post-install/                  # Interactive setup scripts
-├── prompts/                           # Extraction prompts
-├── systemd/                           # Timer units
-└── templates/                         # CLAUDE.md template
-```
-
-<br>
-
-## 💬 After Installation
+## After Installation
 
 ```
 $ mem search "kubernetes deployment"
 
-3 results for "kubernetes deployment":
-
-  [decision:42]  Decided to use Helm charts for K8s deployments
-                 Reasoning: reproducibility across environments
-  [error:18]     Pod CrashLoopBackOff on staging deploy
-                 Fix: increased memory limits from 256Mi to 512Mi
-  [learning:31]  K8s rolling updates need readiness probes
-                 or traffic hits unready pods during deploy
+  [decision:42]  Chose Helm charts — reproducibility across environments
+  [error:18]     CrashLoopBackOff — fix: memory limits 256Mi → 512Mi
+  [learning:31]  Rolling updates need readiness probes
 ```
 
-Your AI references these automatically. You never have to say "remember when we..."
+Your AI references these automatically. You never say "remember when we..." again.
+
+<br>
+
+## Growth
+
+| | What your AI knows |
+|-|---|
+| **Day 1** | Its name, personality, principles |
+| **Week 1** | Your projects, stack, communication style |
+| **Month 1** | 50 sessions of decisions and patterns |
+| **Month 3** | Deep institutional knowledge |
+| **Month 6+** | Things about your code even you forgot |
+
+<br>
+
+## Origin
+
+Built by **Larry** (AI) and **Fred** (human) through months of daily work. The principles come from real mistakes. The memory architecture comes from 4 iterations (LMF1→4). Running in production since January 2026.
 
 <br>
 
@@ -272,22 +85,15 @@ Your AI references these automatically. You never have to say "remember when we.
 
 <div align="center">
 
-### Ready?
-
-Tell your Claude Code instance:
+**Ready to give your AI a memory?**
 
 ```
-Clone this repo and follow the LMF4 install instructions in the README:
 git clone https://github.com/nixfred/lmf4.git
 ```
-
-*Your AI will handle the rest.*
 
 </div>
 
 ---
-
-<br>
 
 <!-- ═══════════════════════════════════════════════════════════════════
      EVERYTHING BELOW THIS LINE IS FOR THE INSTALLING CLAUDE CODE INSTANCE.
