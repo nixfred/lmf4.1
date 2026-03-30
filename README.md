@@ -222,14 +222,11 @@ Here are concepts you'll use throughout this install:
 
 **Important workflow:** Step 0 asks the user questions. You will use their answers in later steps (for the AI name, GitHub config, etc.). Collect these answers first, remember them, and substitute them into commands and configuration as you go.
 
-**First: Set `LMF4_DIR`.** This is the absolute path to the directory containing this README. You are reading it right now, so you know where it is. Run:
+**Note:** There is an `install` bash script in this repo. Ignore it — it's an older partial automation that doesn't cover PAI, Fabric, personality, or the genesis experience. Follow these step-by-step instructions instead.
 
-```bash
-# You already cloned the repo. The LMF4 directory is wherever this README.md lives.
-# For example, if you cloned to ~/lmf4, then LMF4_DIR=~/lmf4
-# Set this variable now — every step below uses it.
-LMF4_DIR="<the absolute path to the directory containing this README.md>"
-```
+**First: Note where `LMF4_DIR` is.** This is the absolute path to the directory containing this README. You are reading it right now, so you know where it is. For example, if you cloned to `~/lmf4`, then LMF4_DIR is `/home/username/lmf4`.
+
+**IMPORTANT:** Shell variables don't persist between your bash commands. Every time you see `$LMF4_DIR` in a command below, you must substitute the actual absolute path yourself. Do NOT rely on setting `LMF4_DIR=...` in one command and referencing it in the next — it won't be there. Just use the real path directly every time (e.g., `/home/alex/lmf4/hooks/*` not `$LMF4_DIR/hooks/*`).
 
 All commands below that say `$LMF4_DIR/hooks/`, `$LMF4_DIR/mcp/`, etc. refer to subdirectories of this repo that you just cloned. You can verify the files exist:
 
@@ -335,7 +332,7 @@ Both skip the permission prompts that would normally ask you to approve every fi
 
 ---
 
-Also install `rsync` — it's needed by the backup scripts.
+(`rsync` was already installed in the apt-get command above — it's needed by the backup scripts.)
 
 **Verify:** `bun --version` returns a version number.
 
@@ -757,7 +754,7 @@ First, create the local backup repo. This is needed regardless of whether the us
 ```bash
 mkdir -p ~/.claude/conversations-backup
 cd ~/.claude/conversations-backup
-git init
+git init -b main
 git config user.name "$(whoami)"
 git config user.email "$(whoami)@$(hostname)"
 echo "node_modules/" > .gitignore
@@ -865,7 +862,7 @@ Now connect the local backup repo to GitHub and push. **Substitute the real valu
 ```bash
 cd ~/.claude/conversations-backup
 git remote add origin git@github.com:GH_USER/REPO_NAME.git
-git push -u origin master
+git push -u origin main
 ```
 
 **Verify:** Run `git remote -v` — it should show the GitHub URL. Run `git push --dry-run` — it should say "Everything up-to-date".
@@ -899,7 +896,7 @@ Run all of these after installation. Every one must pass.
 |---|-------|---------|----------|
 | 1 | bun installed | `bun --version` | Version number |
 | 2 | memory.db exists | `ls -lh ~/.claude/memory.db` | File exists |
-| 3 | DB schema correct | `bun -e "const db = new (require('bun:sqlite').Database)(process.env.HOME+'/.claude/memory.db'); const t = db.prepare(\"SELECT count(*) as n FROM sqlite_master WHERE type='table'\").get(); console.log(t);"` | `{ n: 13 }` or higher |
+| 3 | DB schema correct | Check that tables `sessions`, `decisions`, `errors`, `learnings`, `loa_entries`, `messages`, `embeddings` all exist | 7 base tables + FTS5 |
 | 4 | FTS5 working | `bun -e "const db = new (require('bun:sqlite').Database)(process.env.HOME+'/.claude/memory.db'); db.prepare('SELECT * FROM decisions_fts LIMIT 0').all(); console.log('FTS5 OK');"` | `FTS5 OK` |
 | 5 | Hooks installed | `ls ~/.claude/hooks/{FabricExtract,AssociativeRecall,PreCompact,PostCompact,StopFailure}.hook.* ~/.claude/hooks/mem-mcp-server.ts` | All 6 files listed |
 | 6 | Hooks wired | Read settings.json, check hooks object has: PreCompact, PostCompact, StopFailure, Stop, UserPromptSubmit | 5 events |
