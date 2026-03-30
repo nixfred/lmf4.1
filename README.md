@@ -180,7 +180,7 @@ LMF4 Installation Checklist
 [ ] Step 0:  Collected user preferences (name, AI name, GitHub, API keys)
 [ ] Step 1:  bun installed and on PATH (including .bashrc)
 [ ] Step 1b: Go + Fabric installed and configured with API keys
-[ ] Step 1c: PAI installed from GitHub repo
+[ ] Step 1c: PAI installed from GitHub repo (PAI dir + settings.json + statusline)
 [ ] Step 2:  Directory structure created (~/.claude/hooks, MEMORY, tools, bin)
 [ ] Step 3:  5 hooks + Inference.ts copied and executable
 [ ] Step 4:  MCP memory server installed
@@ -433,11 +433,11 @@ The PAI installer is interactive — it will ask you questions. Since you alread
 
 The installer handles generating settings.json and setting up the directory structure. After it completes, `~/.claude/PAI/` will exist with the full PAI system.
 
-**Do not skip this step. PAI is required.** If the `git clone` fails, check network connectivity. If `bash install.sh` fails, read the error and fix it. If the installer asks a question you didn't collect in Step 0, ask the user now.
+**Do not skip this step. PAI is required.** If `bash install.sh` fails, read the error and fix it. If the installer asks a question you didn't collect in Step 0, ask the user now.
 
 **Note about the PAI version:** The install path references `v4.0.3`. Check the [PAI releases page](https://github.com/danielmiessler/Personal_AI_Infrastructure/tree/main/Releases) for the latest version and use that instead if newer.
 
-**Verify:** `ls ~/.claude/PAI/` shows the PAI directory structure AND `~/.claude/settings.json` exists. Both must be true before continuing.
+**Verify:** `ls ~/.claude/PAI/` shows the PAI directory structure AND `~/.claude/settings.json` exists AND `ls ~/.claude/statusline-command.sh` exists. All three must be true before continuing. If the statusline script is missing, the PAI install didn't complete fully — re-run `bash install.sh`.
 
 ### Step 2: Create directory structure
 
@@ -682,7 +682,7 @@ If the user provided an ElevenLabs key in Step 0, also add it to the env:
 }
 ```
 
-**How to do the merge:** Read the existing settings.json (it may have been created by the PAI installer in Step 1c — if so, it already has a lot of content). Parse it as JSON. Add each of the above keys, being careful not to overwrite existing values (e.g., if `hooks.Stop` already has entries, append the FabricExtract hook to that array rather than replacing it). Write the result back.
+**How to do the merge:** Read the existing settings.json (it was created by the PAI installer in Step 1c — it already has content including hooks, identity, and statusline). Parse it as JSON. Add each of the above keys, being careful not to overwrite existing values (e.g., if `hooks.Stop` already has entries, append the FabricExtract hook to that array rather than replacing it). **Do NOT remove or overwrite any existing keys** — especially `statusline`, which PAI set up. Write the result back.
 
 **Verify:** Read settings.json back and confirm:
 - `hooks` has at minimum these 5 events: PreCompact, PostCompact, StopFailure, Stop, UserPromptSubmit
@@ -690,6 +690,7 @@ If the user provided an ElevenLabs key in Step 0, also add it to the env:
 - `daidentity.name` matches the user's chosen AI name
 - `principal.name` matches the user's real name
 - `autoMemoryDirectory` points to the correct path
+- `statusline` key still exists (from PAI install — do not remove it)
 
 ### Step 9: Create helper scripts
 
