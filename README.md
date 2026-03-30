@@ -326,7 +326,7 @@ LMF4 Installation Checklist
 [ ] Step 0:  Collected user preferences (name, AI name, GitHub, API keys)
 [ ] Step 1:  bun installed and on PATH (including .bashrc)
 [ ] Step 1b: Go + Fabric installed and configured with API keys
-[ ] Step 1c: PAI installed (or manual identity configured)
+[ ] Step 1c: PAI installed from GitHub repo
 [ ] Step 2:  Directory structure created (~/.claude/hooks, MEMORY, tools, bin)
 [ ] Step 3:  5 hooks + Inference.ts copied and executable
 [ ] Step 4:  MCP memory server installed
@@ -391,7 +391,7 @@ If any of those directories are missing, something is wrong with the clone. Re-c
 
 ---
 
-I'm going to install LMF4 — a persistent memory system with PAI (Personal AI Infrastructure) and Fabric. Before I start, I need to know a few things. Some are required, some are optional — just answer what you can and I'll handle the rest.
+I'm going to install LMF4 — a persistent memory system with PAI (Personal AI Infrastructure) and Fabric. Before I start, I need to know a few things:
 
 **About you:**
 1. **What is your name?** (So I know what to call you)
@@ -568,7 +568,9 @@ The PAI installer is interactive — it will ask you questions. Since you alread
 
 The installer handles generating settings.json and setting up the directory structure. After it completes, `~/.claude/PAI/` will exist with the full PAI system.
 
-**Verify:** `ls ~/.claude/PAI/` shows the PAI directory structure AND `~/.claude/settings.json` exists.
+**Do not skip this step. PAI is required.** If the `git clone` fails, check network connectivity. If `bash install.sh` fails, read the error and fix it. If the installer asks a question you didn't collect in Step 0, ask the user now.
+
+**Verify:** `ls ~/.claude/PAI/` shows the PAI directory structure AND `~/.claude/settings.json` exists. Both must be true before continuing.
 
 ### Step 2: Create directory structure
 
@@ -880,7 +882,7 @@ systemctl --user enable --now memory-backup.timer
 
 **Verify:** `systemctl --user list-timers | grep memory` shows both timers scheduled.
 
-### Step 11: Initialize backup repo and (optionally) connect to GitHub
+### Step 11: Initialize backup repo and connect to GitHub
 
 First, create the local backup repo. This is needed regardless of whether the user wants GitHub — the backup script in Step 9 commits to this repo locally.
 
