@@ -460,6 +460,25 @@ echo 'export BUN_INSTALL="$HOME/.bun"' >> ~/.bashrc
 echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> ~/.bashrc
 ```
 
+Also add Claude Code convenience aliases to `.bashrc`:
+```bash
+echo "alias ccc='claude --dangerously-skip-permissions'" >> ~/.bashrc
+echo "alias cccc='claude --dangerously-skip-permissions -c'" >> ~/.bashrc
+```
+
+Tell the user about these aliases:
+
+---
+
+I've added two shortcuts to your shell:
+
+- **`ccc`** — starts Claude Code with permissions auto-approved. Use this for normal interactive sessions where you trust the AI to run commands without asking every time.
+- **`cccc`** — same as `ccc` but also resumes your last conversation (`-c` flag). Use this when you want to pick up where you left off in your previous session.
+
+Both skip the permission prompts that would normally ask you to approve every file read, bash command, etc. This is how most power users run Claude Code day-to-day.
+
+---
+
 Also install `rsync` — it's needed by the backup scripts.
 
 **Verify:** `bun --version` returns a version number.
