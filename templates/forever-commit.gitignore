@@ -1,0 +1,76 @@
+# ForeverCommit .gitignore template
+# Copy to the root of your forever-commit target directory (default ~/.claude)
+# as `.gitignore` BEFORE enabling the ForeverCommit hook.
+#
+# The hook will REFUSE to run if this file is missing required patterns.
+# Read docs/for-the-human/08-forever-commit.md before enabling anything.
+
+# ── Secrets (NEVER commit) ────────────────────────────────────────────
+.env
+.env.*
+*.env
+.ssh/
+.aws/
+.gnupg/
+.docker/config.json
+.netrc
+.pgpass
+.npmrc
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+id_ecdsa*
+id_dsa*
+
+# ── Credentials, tokens, auth files ───────────────────────────────────
+**/secret*
+**/*secret*
+**/token*
+**/*token*
+**/*credential*
+**/credentials
+**/.auth
+**/auth.json
+**/oauth*
+
+# ── SQLite transient state (not secret but noisy) ─────────────────────
+*.sqlite-wal
+*.sqlite-shm
+*.db-wal
+*.db-shm
+
+# ── Cache, build artifacts ────────────────────────────────────────────
+node_modules/
+.cache/
+.npm/
+dist/
+build/
+__pycache__/
+*.pyc
+.next/
+.nuxt/
+
+# ── OS junk ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ── Large binaries (storage bloat) ────────────────────────────────────
+*.iso
+*.dmg
+*.img
+*.mp4
+*.mov
+*.mkv
+
+# ── Claude Code transient state (your choice; often noisy) ────────────
+# Uncomment these if you want leaner commits.
+# projects/*/tool-results/
+# projects/*/subagents/
+# shell-snapshots/
+# ide/lock/
