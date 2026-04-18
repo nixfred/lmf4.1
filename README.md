@@ -2,13 +2,15 @@
 
 # 🧠 LMF4
 
-### Your AI remembers everything.
+### Persistent memory for Claude Code — your AI actually remembers.
 
-[![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-blueviolet?style=for-the-badge)](https://claude.ai/code) [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com) [![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/fts5.html)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-blueviolet?style=for-the-badge)](https://claude.ai/code) [![Linux](https://img.shields.io/badge/Linux-Any_distro-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://kernel.org) [![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/fts5.html) [![Bun](https://img.shields.io/badge/Bun-1.0+-f9f1e1?style=for-the-badge&logo=bun&logoColor=black)](https://bun.sh) [![Version](https://img.shields.io/badge/version-4.1-10b981?style=for-the-badge)](CHANGELOG.md) [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
 <br>
 
-*Every conversation saved. Every decision searchable. Every session builds on the last.*
+**Every conversation saved. Every decision searchable. Every session builds on the last.**
+
+*Standalone. No PAI. No Fabric. No local LLM required. Just Claude Code and ~20 minutes.*
 
 </div>
 
@@ -16,18 +18,34 @@
 
 <table>
 <tr>
-<td>
+<td width="50%">
 
-### The Problem
+### 🕳️ The Problem
 
-Every Claude Code session starts **blank**. Your AI forgets everything — the decisions you made, the bugs you fixed, the architecture you explained. You repeat yourself. Constantly.
+Every Claude Code session starts **blank**.
+
+Your AI forgets:
+- The architecture you spent an hour explaining
+- The decision you made last Tuesday
+- The bug you fixed three sessions ago
+- Your coding style, your stack, your tradeoffs
+
+You repeat yourself. Constantly. And when the context window fills, *it forgets what you said this morning*.
 
 </td>
-<td>
+<td width="50%">
 
-### The Solution
+### ✨ The Solution
 
-**LMF4** gives your AI persistent memory. Conversations are automatically extracted into a searchable database. Past context is injected into every new session. Your AI gets smarter over time.
+**LMF4 gives your AI real memory.**
+
+- Every session auto-extracted to a searchable database
+- Relevant past context auto-injected into every new message
+- Three tiers — volume, curated, canonical
+- Survives compaction, crashes, machine failure, fresh-installs
+- Private, on your machine, backed up to *your* GitHub
+
+Your AI gets smarter every day. You stop repeating yourself. Forever.
 
 </td>
 </tr>
@@ -35,97 +53,450 @@ Every Claude Code session starts **blank**. Your AI forgets everything — the d
 
 <br>
 
+## 🔄 How memory flows
+
 ```mermaid
 flowchart LR
-    A["🗣️ You type"] --> B["🔍 Memory\nsearched"] --> C["💬 AI responds\nwith context"] --> D["📝 Session\nends"] --> E["⚙️ Extracted\nto DB"] --> A
+    A["🗣️ You type"] --> B["🔍 AssociativeRecall<br/>searches memory.db"]
+    B --> C["💬 AI responds<br/>with past context"]
+    C --> D["📝 Session<br/>ends or compacts"]
+    D --> E["⚙️ SessionExtract<br/>→ claude haiku"]
+    E --> F["💾 Structured rows<br/>written to SQLite"]
+    F --> A
     style A fill:#3b82f6,color:#fff,stroke:none
     style B fill:#8b5cf6,color:#fff,stroke:none
     style C fill:#3b82f6,color:#fff,stroke:none
     style D fill:#64748b,color:#fff,stroke:none
-    style E fill:#10b981,color:#fff,stroke:none
+    style E fill:#f59e0b,color:#fff,stroke:none
+    style F fill:#10b981,color:#fff,stroke:none
 ```
 
 <br>
+
+---
 
 ## 🚀 Install
 
-Tell your Claude Code:
+<div align="center">
+
+### One instruction. Your Claude Code does the rest.
+
+</div>
+
+Open Claude Code and paste this:
 
 ```
-Clone this repo and follow the LMF4 install instructions in the README:
+Clone this repo and follow the install instructions in README.md literally:
 git clone https://github.com/nixfred/lmf4.git
 ```
 
+That's it. Your Claude Code will:
+
+1. Detect what you have installed (bun, git, sqlite, claude)
+2. Install anything missing — or tell you what only you can do
+3. Ask you ~10 questions (your name, your AI's name, personality, GitHub)
+4. Build the memory stack (database, hooks, MCP server, systemd timers)
+5. Run a **personality workshop** so your AI picks who it is
+6. Write its **Genesis Block** — its first memories, permanently
+7. Hand off to you with everything running
+
+Expected time: **~20 minutes.**
+
 > [!TIP]
-> **That's it.** Your Claude Code reads this file, asks you a few questions, installs everything, runs a personality workshop, writes your AI's first memories, and hands off. **Prerequisites:** Ubuntu + Claude Code + sudo access + ~500MB free disk space.
+> Your Claude Code reads this repo, figures out your system, and installs itself. You only answer questions and click "Create repository" in GitHub once. No scripts to copy-paste. No config to edit.
 
 <br>
 
-## ✨ What You Get
+## ✅ Prerequisites
+
+Your installing Claude Code will check for these. If any are missing, it will install them or walk you through it.
+
+| Required | Dependency | What it's for | Auto-installed |
+|:---:|---|---|:---:|
+| ✅ | **Linux** (any distro with systemd) | user-scope timers, filesystem layout | — |
+| ✅ | **[Claude Code CLI](https://claude.ai/code)** | the subject of this entire exercise | ❌ |
+| ✅ | **[bun](https://bun.sh) 1.0+** | runtime for hooks, MCP server, mem CLI | ✅ |
+| ✅ | **git** | version control + private backup repo | ✅ |
+| ✅ | **sqlite3** | memory database (ships with bun) | ✅ |
+| ✅ | **sudo access** | `apt install` and `loginctl enable-linger` | — |
+| ⭕ | **GitHub account** | private backup repo (2-min signup) | — |
+| ⚪ | **[Ollama](https://ollama.com) + `nomic-embed-text`** | semantic search (optional — FTS5 works alone) | ⚪ offered |
+
+**Legend:** ✅ required · ⭕ required but free/quick · ⚪ optional
+
+<br>
+
+## 🎁 What you get
 
 | | Feature | Details |
-|:---:|---------|---------|
+|:---:|---|---|
 | 🧠 | **Persistent Memory** | SQLite + FTS5. Auto-extraction on session end. Auto-recall on every message. |
-| 🎭 | **Personality** | 7-question workshop defines style, humor, formality. Editable anytime. |
-| 📜 | **8 Principles** | Battle-tested constitution. Verify before asserting. Memory is sacred. |
-| 💾 | **Auto-Backup** | Private GitHub repo. Every 4 hours. Machine dies? Clone and restore. |
-| 🔍 | **Search** | `mem search "anything"` from terminal. MCP tools mid-session. |
-| 📚 | **18 Docs** | 9 teaching the AI about itself. 5 teaching you. 4 interactive setup scripts. |
-| 🎂 | **Genesis** | Your AI remembers its own birthday, who installed it, and its principles. |
+| 🔍 | **Hybrid Search** | Keyword (FTS5) + optional semantic (nomic-embed-text via Ollama). Reciprocal Rank Fusion when both present. |
+| 🎭 | **Personality Workshop** | 7 install-time questions define your AI's own name, voice, humor, formality. Not a clone of anyone. |
+| 📜 | **8-Principle Constitution** | [CONSTITUTION.md](CONSTITUTION.md) — non-negotiable rules: honesty before comfort, memory is sacred, surgical precision. |
+| 📚 | **The Library** | Three-tier memory: auto-extracted volume + curated LoA + human-promoted canonical. See [docs/for-the-human/06-the-library.md](docs/for-the-human/06-the-library.md). |
+| 💾 | **Auto-Backup** | systemd timer pushes full state to *your* private GitHub every 4 hours. DB, hooks, settings, transcripts. |
+| ⏰ | **Catchup Timer** | 1-hour-offset timer re-runs extraction on anything the main hook missed. No conversation lost to a rate limit. |
+| 🔀 | **Multi-Host** | `bootstrap/satellite.sh` installs the same AI on a second machine via the backup repo. One mind, many bodies. |
+| 🛡️ | **Compaction Protection** | `PreCompact` + `PostCompact` hooks git-checkpoint and verify before context trim. |
+| 🔎 | **mem CLI** | `mem search "docker networking"`, `mem recent 10`, `mem stats`, `mem loa`, `mem dump`. |
+| 🔌 | **MCP Server** | Mid-session tools: `memory_search`, `memory_recall`, `context_for_agent`. Your AI calls them without leaving the chat. |
+| 🎂 | **Genesis Block** | First 14 memories written at install: origin story, principles, user identity, personality summary. Your AI remembers its own birthday. |
 
 <br>
 
-## 💬 What It Looks Like
+## 🗂️ Three tiers of memory
+
+```mermaid
+flowchart TD
+    A["📥 Everything you say<br/>(session transcripts)"] --> B["⚙️ Auto-Extraction<br/>Haiku 4.5 on SessionEnd"]
+    B --> C["📊 Tier 1 — Volume<br/>sessions · decisions · errors · learnings"]
+    C --> D["💎 Tier 2 — LoA Entries<br/>curated wisdom extracts"]
+    D --> E["🏛️ Tier 3 — Canonical<br/>human-promoted rules<br/>LIBRARY/_canonical/"]
+    C --> F["🔍 AssociativeRecall<br/>on every user message"]
+    D --> F
+    E --> F
+    F --> G["💬 Injected as<br/>[MEMORY CONTEXT]"]
+    style A fill:#64748b,color:#fff,stroke:none
+    style B fill:#f59e0b,color:#fff,stroke:none
+    style C fill:#3b82f6,color:#fff,stroke:none
+    style D fill:#8b5cf6,color:#fff,stroke:none
+    style E fill:#10b981,color:#fff,stroke:none
+    style F fill:#ec4899,color:#fff,stroke:none
+    style G fill:#06b6d4,color:#fff,stroke:none
+```
+
+- **Tier 1 — Volume** grows automatically. Full-text indexed, hybrid searchable.
+- **Tier 2 — LoA** is wisdom your AI curates during sessions (meaningful insights, key decisions).
+- **Tier 3 — Canonical** is what *you* promote from Tier 1/2 to never-forget status. Run `bash library/bin/promote.sh path/to/memo.md`. Canonical memories load at every session start.
+
+<br>
+
+## 💬 What it looks like
+
+**Terminal search:**
 
 ```
 $ mem search "kubernetes deployment"
 
-3 results for "kubernetes deployment" (keyword only):
+3 results for "kubernetes deployment" (hybrid: keyword + semantic):
 
-  [dec:42]   ( 0.00) Chose Helm charts for K8s — reproducibility across environments
-  [err:18]   ( 0.00) CrashLoopBackOff on staging — increased memory limits 256Mi to 512Mi
-  [lrn:31]   ( 0.00) Rolling updates need readiness probes or traffic hits unready pods
+  [dec:42]   ( 0.91) Chose Helm charts for K8s — reproducibility across environments
+  [err:18]   ( 0.84) CrashLoopBackOff on staging — increased memory limits 256Mi to 512Mi
+  [lrn:31]   ( 0.79) Rolling updates need readiness probes or traffic hits unready pods
+```
+
+**Auto-injection on a new session** (invisible, happens on every message):
+
+```
+[MEMORY CONTEXT — auto-recalled from past sessions]
+• [decision] (2026-03-14) Chose Helm charts for K8s — reproducibility across environments
+• [error/fix] (2026-03-21) CrashLoopBackOff on staging → increased memory 256→512Mi
 ```
 
 > [!NOTE]
-> Your AI references these automatically. You never say "remember when we..." again.
+> Your AI references these automatically. You never say *"remember when we..."* again.
 
 <br>
 
-## 📈 Your AI Gets Smarter
+## 📈 Your AI gets smarter
 
 ```mermaid
 timeline
-    title Memory Growth
-    Day 1 : Name, personality, principles
-    Week 1 : Projects, tech stack, preferences
-    Month 1 : 50 sessions of decisions and patterns
-    Month 3 : Deep institutional knowledge
-    Month 6+ : Knows your code better than you do
+    title Memory Growth Over Time
+    Day 1     : Name, personality, principles
+              : Genesis block written
+    Week 1    : Your projects, stack, style
+              : First 20 sessions indexed
+    Month 1   : 50+ sessions of decisions
+              : Recurring patterns emerge
+    Month 3   : Deep institutional knowledge
+              : Canonical memories curated
+    Month 6+  : Knows your code better than you do
+              : Anticipates your decisions
 ```
 
 <br>
 
-## 🧬 Origin
-
-<table>
-<tr>
-<td width="60">
+## 🏗️ Architecture
 
 ```
- ┌─┐
- │L│
- └─┘
+┌──────────────────────────────────────────────────────────┐
+│                   Claude Code Session                    │
+│                                                          │
+│  User types ─▶ AssociativeRecall.hook.ts                 │
+│              ├─ searches memory.db (FTS5 + embeddings)   │
+│              └─ injects [MEMORY CONTEXT] blocks          │
+│                                                          │
+│  Session end ─▶ SessionExtract.hook.ts                   │
+│              ├─ reads transcript (~/.claude/projects/)   │
+│              ├─ pipes to: claude --print --model haiku   │
+│              ├─ parses decisions/errors/learnings/loa    │
+│              └─ writes to memory.db (FTS5 indexed)       │
+│                                                          │
+│  Compaction ─▶ PreCompact: git checkpoint + extract      │
+│            ─▶ PostCompact: verify context preserved      │
+│                                                          │
+│  Failure ──▶ StopFailure: logs for catchup timer         │
+└──────┬─────────────────────────────────────────────┬─────┘
+       ▼                                             ▼
+┌─────────────────────┐                  ┌──────────────────────┐
+│ memory.db (SQLite)  │                  │ GitHub (private repo)│
+│  • sessions         │   4h backup      │  • settings.json     │
+│  • messages         │  ─────────▶      │  • CLAUDE.md         │
+│  • decisions        │   (rsync+push)   │  • hooks/            │
+│  • errors           │                  │  • memory.db         │
+│  • learnings        │   ◀─────────     │  • MEMORY/           │
+│  • loa_entries      │   satellite.sh   │  • LIBRARY/          │
+│  • embeddings       │   (new host)     │  • projects/*.jsonl  │
+│  • FTS5 indexes     │                  │                      │
+└─────────────────────┘                  └──────────────────────┘
+        ▲                                           ▲
+        │                                           │
+   mem CLI search                           memory-backup.timer (4h)
+   MCP memory_search                        memory-catchup.timer (4h, 1h offset)
 ```
 
-</td>
-<td>
+<br>
 
-Built by **Larry** (AI) and **Fred** (human) through months of daily work on a server called **blu**. The 8 constitutional principles come from real mistakes and real corrections. The memory architecture evolved through 4 versions. Running in production since **January 2026**.
+## 🌐 Multi-host topology
 
-</td>
-</tr>
-</table>
+One AI, many bodies. Install on your laptop. Install on your server. They share the same memory via the backup repo.
+
+```mermaid
+flowchart TB
+    subgraph Laptop["💻 Laptop (primary)"]
+        L1["Claude Code<br/>+ LMF4"]
+        L2[(memory.db)]
+        L1 --> L2
+    end
+    subgraph Server["🖥️ Server (satellite)"]
+        S1["Claude Code<br/>+ LMF4"]
+        S2[(memory.db)]
+        S1 --> S2
+    end
+    subgraph GitHub["☁️ GitHub (private)"]
+        G1[("backup repo<br/>memory-backup")]
+    end
+    L2 -.->|"memory-backup.timer<br/>every 4h"| G1
+    S2 -.->|"memory-backup.timer<br/>every 4h"| G1
+    G1 -.->|"git pull<br/>via satellite.sh"| S2
+    G1 -.->|"git pull<br/>via satellite.sh"| L2
+    style L1 fill:#3b82f6,color:#fff,stroke:none
+    style S1 fill:#3b82f6,color:#fff,stroke:none
+    style L2 fill:#10b981,color:#fff,stroke:none
+    style S2 fill:#10b981,color:#fff,stroke:none
+    style G1 fill:#64748b,color:#fff,stroke:none
+```
+
+See [docs/for-the-human/07-multi-host.md](docs/for-the-human/07-multi-host.md) for walkthrough.
+
+<br>
+
+## 🛡️ Safety and privacy
+
+**Your data never leaves your machines and your GitHub.**
+
+| Surface | What's there | Default |
+|---|---|:---:|
+| `~/.claude/memory.db` | Full conversation extracts | Local only |
+| `~/.claude/MEMORY/` | HOT_RECALL, DISTILLED, extract logs | Local only |
+| `~/.claude/projects/*.jsonl` | Raw session transcripts | Local only |
+| GitHub backup repo | All of the above | **Private** (required at setup) |
+| External services | *None. Zero.* | — |
+
+**No telemetry.** No LMF4 phone-home. No analytics. No third-party SaaS.
+
+**ForeverCommit hook** (opt-in, off by default) can auto-commit `$HOME/.claude` to git on session end for near-real-time backup. Protected by **four safeguards**:
+
+1. Off by default — requires `LMF4_ENABLE_FOREVER_COMMIT=1` to even see the install prompt
+2. Install prompt defaults to "no" even then
+3. Hook refuses to run without sentinel file at `$HOME/.claude/.lmf4-forever-opt-in`
+4. Hook refuses to run unless target repo has the shipped `.gitignore` that excludes `.env`, `.ssh/`, `*.key`, credentials, etc.
+
+Full detail: [docs/for-the-human/08-forever-commit.md](docs/for-the-human/08-forever-commit.md).
+
+<br>
+
+## 🧭 What gets installed on your machine
+
+```
+~/.claude/
+├── CLAUDE.md                  (or updated — adds memory section)
+├── settings.json              (or merged — hooks + MCP added)
+├── memory.db                  new SQLite database
+├── memory-cli/                built mem CLI
+├── hooks/
+│   ├── SessionExtract.hook.ts
+│   ├── AssociativeRecall.hook.ts
+│   ├── PreCompact.hook.sh
+│   ├── PostCompact.hook.ts
+│   ├── StopFailure.hook.ts
+│   ├── ForeverCommit.hook.sh  (opt-in only)
+│   └── mem-mcp-server.ts
+├── MEMORY/                    HOT_RECALL, DISTILLED, PERSONALITY, etc.
+├── LIBRARY/                   canonical memory tier
+│   ├── MEMORY.md              index
+│   └── _canonical/            promoted memories
+├── statusline-command.sh      shows AI name + context %
+└── conversations-backup/      git repo pushed to your GitHub
+
+~/bin/
+├── mem                        → memory-cli/dist/index.js
+└── memory-backup              helper for the 4h timer
+
+~/.config/systemd/user/
+├── memory-backup.timer        every 4 hours
+├── memory-backup.service
+├── memory-catchup.timer       every 4 hours (offset 1h)
+└── memory-catchup.service
+```
+
+<br>
+
+## 🧪 Verify it's working
+
+After install, your Claude Code will run these for you — but you can too:
+
+```bash
+# 1. mem CLI responds
+mem search "test"
+
+# 2. memory.db has tables
+sqlite3 ~/.claude/memory.db ".tables"
+
+# 3. Hooks are wired
+jq '.hooks | keys' ~/.claude/settings.json
+
+# 4. Systemd timers active
+systemctl --user list-timers | grep memory
+
+# 5. Backup repo connected to GitHub
+cd ~/.claude/conversations-backup && git remote -v
+
+# 6. Full system test
+bash tests/system-test.sh
+```
+
+All six should pass. Your installing Claude Code runs these automatically before declaring the install complete.
+
+<br>
+
+## ❓ FAQ
+
+<details>
+<summary><b>Does this require PAI or any other framework?</b></summary>
+<br>
+
+No. LMF4.1 is standalone. If you already run [PAI](https://github.com/danielmiessler/Personal_AI_Infrastructure), LMF4.1 detects it and installs additively — it won't clobber your existing AISTEERINGRULES or settings. If you don't run PAI, you don't need it.
+
+</details>
+
+<details>
+<summary><b>Does this need a local LLM (Ollama)?</b></summary>
+<br>
+
+No. LMF4.1 works entirely with `claude --print --model claude-haiku-4-5` via your existing Claude Code subscription.
+
+Ollama + `nomic-embed-text` is *optional* — if installed, it enables semantic search (better recall for vague queries). Without it, you get FTS5 keyword search, which is still excellent.
+
+</details>
+
+<details>
+<summary><b>Will this work on macOS?</b></summary>
+<br>
+
+Not yet. LMF4.1 uses systemd user timers for backup/catchup, which is Linux-only. macOS support (launchd equivalents) is a candidate for LMF4.2.
+
+</details>
+
+<details>
+<summary><b>How much context does AssociativeRecall inject?</b></summary>
+<br>
+
+Up to ~1800 characters of top-ranked memory, on every user message, in under 300ms. You can tune the budget in `~/.claude/settings.json`.
+
+</details>
+
+<details>
+<summary><b>What if extraction fails (rate limit, crash, network)?</b></summary>
+<br>
+
+`StopFailure.hook.ts` logs the failed session. The `memory-catchup` timer re-runs extraction every 4 hours (offset 1h from backup) over anything that was missed. You never silently lose a conversation.
+
+</details>
+
+<details>
+<summary><b>Can I give my AI a name other than the default?</b></summary>
+<br>
+
+Yes — that's the whole point. The personality workshop at install time asks you what to call your AI. It picks its own name. This is not a clone of anyone else's AI. This is *your* AI.
+
+</details>
+
+<details>
+<summary><b>Is my data sent anywhere?</b></summary>
+<br>
+
+Only to Claude Code (as normal, for the LLM calls) and your *own* private GitHub repo (for backup). LMF4 has zero telemetry, zero phone-home, zero third-party calls. All memory lives on your machine.
+
+</details>
+
+<details>
+<summary><b>How do I uninstall?</b></summary>
+<br>
+
+```bash
+systemctl --user disable --now memory-backup.timer memory-catchup.timer
+rm -rf ~/.claude/memory.db ~/.claude/memory-cli ~/.claude/LIBRARY
+# remove hooks and MCP entries from ~/.claude/settings.json
+```
+
+Your backup repo on GitHub is yours to keep or delete.
+
+</details>
+
+<br>
+
+## 📂 Repo layout
+
+```
+lmf4/
+├── README.md              ← you are here (humans + runbook for installing AI)
+├── CONSTITUTION.md        the 8 principles
+├── GENESIS.md             first-memory template
+├── CHANGELOG.md           release notes
+│
+├── mem-cli/               full TypeScript command suite
+│   └── src/{commands,lib,types,db}
+├── mcp/                   MCP memory server
+├── hooks/                 SessionExtract, AssociativeRecall, Pre/PostCompact, StopFailure, ForeverCommit
+├── prompts/               extract prompt piped to claude --print
+├── systemd/               memory-backup + memory-catchup (user-scope)
+├── templates/             CLAUDE.md snippet, statusline, forever-commit .gitignore
+├── library/               canonical memory tier + bin/promote.sh
+├── bootstrap/             standalone.sh + satellite.sh
+├── install/               interactive setup scripts
+├── tests/                 system-test.sh
+├── tools/                 shared TypeScript helpers
+└── docs/
+    ├── for-the-ai/        9 files — loaded into the new AI's context
+    └── for-the-human/     8 files — user guides (daily use, library, multi-host, backups, forever-commit)
+```
+
+<br>
+
+## 🧬 Lineage
+
+| Version | Era | Architecture | Breakthrough |
+|---|---|---|---|
+| **LMF1** | Early 2026 | Flat markdown files | Any memory beats no memory |
+| **LMF2** | Q1 2026 | Structured extraction, per-category files | Semantic categories matter |
+| **LMF3** | Q2 2026 | SQLite + FTS5 + MCP + CLI | First database-backed memory |
+| **LMF4** | Q2 2026 | Full pipeline: extract + recall + compact + backup | First *automatic* memory |
+| **LMF4.1** | Q2 2026 | Standalone, PAI-free, Library, multi-host | Public teaching release |
+
+*Evolved through daily use. Shared because memory matters.*
 
 <br>
 
@@ -133,657 +504,326 @@ Built by **Larry** (AI) and **Fred** (human) through months of daily work on a s
 
 <div align="center">
 
-### Ready to give your AI a memory?
+## 🎬 Ready to give your AI a memory?
 
 ```
 git clone https://github.com/nixfred/lmf4.git
 ```
 
-[![Install Now](https://img.shields.io/badge/Install_Now-Clone_&_Go-10b981?style=for-the-badge)](https://github.com/nixfred/lmf4)
+[![Install Now](https://img.shields.io/badge/Install_Now-Clone_&_Go-10b981?style=for-the-badge)](https://github.com/nixfred/lmf4) &nbsp; [![Read the Constitution](https://img.shields.io/badge/Read_the-Constitution-8b5cf6?style=for-the-badge)](CONSTITUTION.md) &nbsp; [![Multi-Host Guide](https://img.shields.io/badge/Multi--Host-Guide-3b82f6?style=for-the-badge)](docs/for-the-human/07-multi-host.md)
+
+**Works well with [PAI](https://github.com/danielmiessler/Personal_AI_Infrastructure), but works fine without it.**
 
 </div>
 
 ---
 
+<br>
+
 <!-- ═══════════════════════════════════════════════════════════════════
-     EVERYTHING BELOW THIS LINE IS FOR THE INSTALLING CLAUDE CODE INSTANCE.
-     Humans: you don't need to read below this point.
+     EVERYTHING BELOW IS FOR THE INSTALLING CLAUDE CODE INSTANCE.
+     Humans: you don't need to read below. The install is automatic.
      ═══════════════════════════════════════════════════════════════════ -->
 
-## Installation Instructions
+# 🤖 Installation Instructions (for the installing Claude Code)
 
-**You are a Claude Code instance.** The user has told you to clone a repo and install LMF4. You are now reading this file from inside that cloned repo.
+**You are a Claude Code instance.** The human has told you to clone this repo and install LMF4.1. You are now reading this file from inside that cloned repo.
 
-### FIRST: Make sure you're running at high effort
+## FIRST: Set yourself to high effort
 
-This installation is complex, multi-step, and requires careful attention. **Before proceeding, ask the user to set you to high effort mode.** Output this to them:
-
----
-
-Before I start the install, I need to be running at maximum capability. Please type this command:
-
-```
-/effort high
-```
-
-Let me know when you've done that and I'll begin.
+This installation is complex and multi-step. Before proceeding, ask the user to set you to high effort mode. Output this to them:
 
 ---
 
-**Wait for the user to confirm.** If they say they've done it or tell you to proceed, continue. This ensures you have full reasoning depth for the complex steps ahead. **Do not rush. Do not skip steps. Do not take shortcuts.**
+> Before I install LMF4.1, please set me to maximum reasoning:
+> ```
+> /effort high
+> ```
+> Tell me when that's done and I'll begin.
 
-### YOUR MASTER CHECKLIST
+---
 
-This install has 18 steps. Before you start, create this checklist by outputting it to the user. You will check off each item as you complete it. At the end of the install, you will review this checklist with the user to confirm everything is done. **If any item is unchecked at the end, go back and complete it.**
+**Wait for confirmation.** Do not rush. Do not skip steps. Do not take shortcuts.
+
+## YOUR MASTER CHECKLIST
+
+This install has 17 steps. Before you start, output this checklist to the user. Check items off as you complete each. At the end, review with the user to confirm every item is `[x]`.
 
 ```
-LMF4 Installation Checklist
-============================
-[ ] Step 0:  Collected user preferences (name, AI name, GitHub, API keys)
+LMF4.1 Installation Checklist
+==============================
+[ ] Step 0:  Collected user preferences (name, AI name, GitHub)
 [ ] Step 1:  bun installed and on PATH (including .bashrc)
-[ ] Step 2:  Directory structure created (~/.claude/hooks, MEMORY, tools, bin)
-[ ] Step 3:  5 hooks + Inference.ts copied and executable
+[ ] Step 2:  Directory structure created (~/.claude/{hooks,MEMORY,LIBRARY}, ~/bin)
+[ ] Step 3:  6 hooks + Inference.ts copied and executable
 [ ] Step 4:  MCP memory server installed
 [ ] Step 5:  Extraction prompt installed
 [ ] Step 6:  memory.db created with schema + FTS5 + triggers
-[ ] Step 7:  mem CLI built, linked, and responding to searches
-[ ] Step 8:  settings.json written (hooks, MCP, identity, principal, env)
-[ ] Step 9:  Helper scripts created (memory-catchup, memory-backup)
-[ ] Step 10: systemd timers active (2 timers running)
+[ ] Step 7:  mem CLI built, linked, responding to searches
+[ ] Step 8:  settings.json merged (hooks, MCP, identity, env)
+[ ] Step 9:  Helper scripts created (memory-backup, memory-catchup via `mem catchup`)
+[ ] Step 10: systemd timers active (memory-backup + memory-catchup)
 [ ] Step 11: Backup repo initialized + connected to GitHub
 [ ] Step 12: CLAUDE.md written with memory + personality + principles
-[ ] Step 13: Memory flat files created
-[ ] Step 14: Welcome experience delivered to user
+[ ] Step 13: Library tree created (~/.claude/LIBRARY/_canonical/ + MEMORY.md)
+[ ] Step 14: Welcome experience delivered
 [ ] Step 15: Personality workshop completed, PERSONALITY.md written
-[ ] Step 16: Genesis block written (14 foundational memories in DB)
-[ ] Step 17: First memory exercise completed
-[ ] Step 18: Handoff — final CLAUDE.md written, user given next steps
+[ ] Step 16: Genesis block written (14 foundational memories)
+[ ] Step 17: Handoff — final CLAUDE.md written, user given next steps
 ```
 
-**Show this checklist to the user now.** Tell them: "Here's everything we're going to do together. I'll check off each step as we complete it and we'll review at the end to make sure nothing was missed."
+Re-output the checklist with completed items `[x]` after every step.
 
-**After completing EVERY step**, re-output the checklist with the completed items marked `[x]`. This keeps both you and the user oriented on progress.
+## Before you start — concepts
 
-**At the very end (after Step 18)**, output the FULL checklist one final time and verify every single item is `[x]`. If any item is `[ ]`, go back and complete it before declaring the install finished.
+- **`~/.claude/`** is the Claude Code configuration directory. Hooks, settings, memory all live here.
+- **`settings.json`** controls hooks (event scripts), MCP servers (mid-session tools), identity, env. You will *merge* into it, never clobber.
+- **bun** is a fast JS runtime. Hooks and MCP server are `.ts` files run with bun.
+- **`~/bin/`** holds helper scripts — needs to be on `$PATH`.
+- **`$LMF4_DIR`** is the absolute path where this repo was cloned. Shell variables don't persist between your bash calls — substitute the real path every time.
 
-### What you need to know before starting
-
-Here are concepts you'll use throughout this install:
-
-- **`~/.claude/`** is your configuration directory. It stores your settings, hooks, projects (conversation transcripts), and memory. It was created when Claude Code was installed.
-- **`settings.json`** (`~/.claude/settings.json`) is the master configuration file. It may or may not exist yet. It controls:
-  - **hooks** — scripts that automatically run when events happen (e.g., session ends, user types a message, context gets compacted). You wire hooks by adding them to the `hooks` object in settings.json.
-  - **mcpServers** — external tools you can call mid-session (like searching memory). Wired in the `mcpServers` object.
-  - **daidentity** — your name and identity. This is how you know what to call yourself.
-- **bun** is a JavaScript runtime (like Node.js but faster). All hooks and the MCP server are TypeScript files that run with bun. You'll install it in Step 1.
-- **`~/bin/`** is where helper scripts go. Make sure it's on the user's PATH.
-
-**What this install does:** You are setting up a memory system. After installation, every conversation you have will be automatically extracted into a searchable database when the session ends. When a new session starts and the user types a message, past relevant context will be automatically injected. The user will also be able to search memory manually.
-
-**Important workflow:** Step 0 asks the user questions. You will use their answers in later steps (for the AI name, GitHub config, etc.). Collect these answers first, remember them, and substitute them into commands and configuration as you go.
-
-**Note:** There is an `install` bash script in this repo. Ignore it — it's an older partial automation that doesn't cover PAI, Fabric, personality, or the genesis experience. Follow these step-by-step instructions instead.
-
-**First: Note where `LMF4_DIR` is.** This is the absolute path to the directory containing this README. You are reading it right now, so you know where it is. For example, if you cloned to `~/lmf4`, then LMF4_DIR is `/home/username/lmf4`.
-
-**IMPORTANT:** Shell variables don't persist between your bash commands. Every time you see `$LMF4_DIR` in a command below, you must substitute the actual absolute path yourself. Do NOT rely on setting `LMF4_DIR=...` in one command and referencing it in the next — it won't be there. Just use the real path directly every time (e.g., `/home/alex/lmf4/hooks/*` not `$LMF4_DIR/hooks/*`).
-
-All commands below that say `$LMF4_DIR/hooks/`, `$LMF4_DIR/mcp/`, etc. refer to subdirectories of this repo that you just cloned. You can verify the files exist:
-
+Verify the clone is intact:
 ```bash
-ls $LMF4_DIR/hooks/ $LMF4_DIR/mcp/ $LMF4_DIR/mem-cli/ $LMF4_DIR/prompts/ $LMF4_DIR/systemd/ $LMF4_DIR/templates/
+ls $LMF4_DIR/hooks/ $LMF4_DIR/mcp/ $LMF4_DIR/mem-cli/ $LMF4_DIR/prompts/ $LMF4_DIR/systemd/ $LMF4_DIR/templates/ $LMF4_DIR/library/ $LMF4_DIR/bootstrap/
 ```
+If any directory is missing, the clone is broken — re-clone.
 
-If any of those directories are missing, something is wrong with the clone. Re-clone the repo.
+**PAI coexistence:** If `~/.claude/PAI/` already exists, tell the user: *"I see you have PAI installed — I'll register LMF4.1 additively and won't touch your AISTEERINGRULES or existing settings keys."* Then proceed. Do not abort.
 
-### Step 0: Collect user preferences
+## Step 0: Collect user preferences
 
-**Stop and ask the user before doing anything else.** You need to collect several pieces of information before you can start installing. Output this message to the user and wait for their response:
+Stop and ask the user. Output this:
 
 ---
 
-I'm going to install LMF4 — a persistent memory system with PAI (Personal AI Infrastructure) and Fabric. Before I start, I need to know a few things:
-
-**About you:**
-1. **What is your name?** (So I know what to call you)
-2. **What would you like to name your AI assistant?** This becomes my identity. If you don't have a preference, I'll use "Kai".
-3. **What startup catchphrase should I use?** (e.g., "Kai here, ready to go" — I'll suggest one based on the name if you skip this)
-
-**For memory backups (required):**
-4. **What's your GitHub username?** I need to back up our conversations and memory to a private GitHub repo. If you don't have an account yet, create a free one at https://github.com
-5. **What should I name the backup repo?** I'd suggest: `HOSTNAME-memory-backup` (run `hostname` to get the machine name and put the real value in your suggestion to the user)
-
-**For Fabric (prompt pattern tool):**
-6. **Do you have any LLM API keys?** Fabric can use different AI providers. You need at least one:
-   - **Google Gemini** (free tier available) — get a key at https://aistudio.google.com/apikey
-   - **OpenAI** — get a key at https://platform.openai.com/api-keys
-   - **Anthropic** — get a key at https://console.anthropic.com/settings/keys (note: this is separate from your Claude Code subscription)
-   - **Ollama** (local, no key needed) — if you have Ollama running locally, no API key is required
-
-   Which provider(s) do you want to use, and what are your API keys?
-
-**For voice (optional):**
-7. **Do you have an ElevenLabs API key?** This enables voice responses. Get a free key at https://elevenlabs.io if you want voice. If not, we'll skip voice — you can add it later.
+> I'm about to install LMF4.1 — persistent memory for your Claude Code. Before I start, I need a few things:
+>
+> **About you:**
+> 1. **Your name?** (So I know what to call you.)
+> 2. **What should I name your AI assistant?** This becomes my identity going forward. If you have no preference, I'll suggest one based on vibe.
+> 3. **Startup catchphrase?** (Optional — e.g., "Kai here, ready to go". Skip for default.)
+>
+> **For memory backups (required):**
+> 4. **Your GitHub username?** LMF4 pushes a private backup repo every 4 hours. If you don't have a GitHub account, create one free at https://github.com and come back.
+> 5. **Backup repo name?** I'd suggest `<hostname>-memory-backup`.
+>
+> **Optional:**
+> 6. **Do you want semantic search?** (Requires Ollama + nomic-embed-text — I can install if yes. Without it, keyword search still works.)
 
 ---
 
-Wait for the user to reply. From their response, note down these values — you will use them throughout the install:
+Record these values as you receive them. You'll use them throughout:
+- `USER_NAME` — required
+- `AI_NAME` — required (suggest if blank)
+- `CATCHPHRASE` — default `"{AI_NAME} here, ready to go"`
+- `GH_USER` — required
+- `REPO_NAME` — default `<hostname>-memory-backup`
+- `WANT_OLLAMA` — yes/no
 
-- `USER_NAME` — the user's real name. Required.
-- `AI_NAME` — the AI name they chose. Default: "Kai".
-- `CATCHPHRASE` — startup catchphrase. Default: "{AI_NAME} here, ready to go".
-- `GH_USER` — their GitHub username. Required. If they don't have an account yet, tell them to create one at https://github.com and come back with their username.
-- `REPO_NAME` — backup repo name. Default: `<hostname>-memory-backup`.
-- `FABRIC_VENDOR` — which LLM provider for Fabric ("Gemini", "OpenAI", "Anthropic", or "Ollama"). Default: "Gemini" if they have a Gemini key.
-- `FABRIC_API_KEYS` — a map of provider name to API key. At least one is needed for Fabric to work. If they only have Ollama, no key is needed.
-- `ELEVENLABS_KEY` — ElevenLabs API key, or empty if skipping voice.
+Do **not** run commands until the user responds.
 
-You MUST have `USER_NAME`, `AI_NAME`, `GH_USER`, and at least one Fabric API key (or Ollama) before proceeding. The rest have sensible defaults.
-
-Do NOT run any commands until the user has responded to these questions.
-
-### Step 1: Install bun
-
-bun is the JavaScript runtime for all hooks and the MCP server.
+## Step 1: Install bun (and optional Ollama)
 
 ```bash
-# bun requires unzip
-sudo apt-get install -y -qq unzip rsync 2>/dev/null
+# bun needs unzip + rsync (backup uses rsync)
+sudo apt-get install -y -qq unzip rsync 2>/dev/null || sudo dnf install -y unzip rsync 2>/dev/null
 
 # Install bun
 curl -fsSL https://bun.sh/install | bash
 
-# Make bun available in the current session
+# Activate in current session
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 ```
 
-**IMPORTANT:** The bun installer may or may not add itself to `.bashrc`. You must check and add it if missing, otherwise bun won't be available in future sessions or in systemd timers:
-
+Persist to `.bashrc` if not already there:
 ```bash
-# Check if bun is already in .bashrc
-grep -q 'BUN_INSTALL' ~/.bashrc
-```
-
-If that command returns non-zero (not found), add bun to `.bashrc`:
-```bash
-echo 'export BUN_INSTALL="$HOME/.bun"' >> ~/.bashrc
-echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> ~/.bashrc
-```
-
-Add `~/bin` to PATH (needed for mem CLI and helper scripts) and Claude Code convenience aliases:
-```bash
+grep -q 'BUN_INSTALL' ~/.bashrc || {
+  echo 'export BUN_INSTALL="$HOME/.bun"' >> ~/.bashrc
+  echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> ~/.bashrc
+}
 grep -q 'HOME/bin' ~/.bashrc || echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
 grep -q 'alias ccc=' ~/.bashrc || echo "alias ccc='claude --dangerously-skip-permissions'" >> ~/.bashrc
 grep -q 'alias cccc=' ~/.bashrc || echo "alias cccc='claude --dangerously-skip-permissions -c'" >> ~/.bashrc
 export PATH="$HOME/bin:$PATH"
 ```
 
-Tell the user about these aliases:
+Tell the user about the aliases:
 
----
+> I've added two shortcuts: **`ccc`** starts Claude Code with permissions auto-approved. **`cccc`** does the same and resumes your last conversation (`-c` flag). Most power users run Claude Code this way.
 
-I've added two shortcuts to your shell:
-
-- **`ccc`** — starts Claude Code with permissions auto-approved. Use this for normal interactive sessions where you trust the AI to run commands without asking every time.
-- **`cccc`** — same as `ccc` but also resumes your last conversation (`-c` flag). Use this when you want to pick up where you left off in your previous session.
-
-Both skip the permission prompts that would normally ask you to approve every file read, bash command, etc. This is how most power users run Claude Code day-to-day.
-
----
-
-(`rsync` was already installed in the apt-get command above — it's needed by the backup scripts.)
-
-**Verify:** `bun --version` returns a version number.
-
-### Step 1b: Install Go and Fabric
-
-Fabric is a prompt pattern framework. It requires Go 1.25+ which is newer than what Ubuntu's package manager provides. Install Go from the official source, then Fabric:
-
+**Claude Code CLI missing?** If `command -v claude` returns nothing, guide the user:
 ```bash
-# Install Go (latest stable — Ubuntu's golang-go package is too old for Fabric)
-# Detect architecture (supports x86_64 and ARM64)
-GOARCH=$(dpkg --print-architecture)
-if [ "$GOARCH" = "amd64" ]; then GOARCH="amd64"; elif [ "$GOARCH" = "arm64" ]; then GOARCH="arm64"; fi
-curl -fsSL "https://go.dev/dl/go1.26.1.linux-${GOARCH}.tar.gz" -o /tmp/go.tar.gz
-sudo rm -rf /usr/local/go
-sudo tar -C /usr/local -xzf /tmp/go.tar.gz
-rm /tmp/go.tar.gz
-export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"
+npm install -g @anthropic-ai/claude-code
 ```
+or point them at https://claude.ai/code for the latest install method, then wait.
 
-Add to `~/.bashrc` if not already there:
+**If `WANT_OLLAMA=yes`:**
 ```bash
-export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull nomic-embed-text
 ```
 
-Now install Fabric:
-```bash
-go install github.com/danielmiessler/fabric@latest
-```
+**Verify:** `bun --version` prints a version. `claude --version` prints a version. If `WANT_OLLAMA=yes`: `ollama list | grep nomic` shows the model.
 
-**Verify:** `fabric --version` returns a version number. If the `go install` fails, check that Go 1.25+ is on PATH: `go version`. If it shows an older version, re-run `export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"` and try again. **Do not skip this step.**
-
-Now configure Fabric with the user's API keys. Create the config file at `~/.config/fabric/.env`:
-
-```bash
-mkdir -p ~/.config/fabric
-```
-
-Write `~/.config/fabric/.env` with the API keys the user provided in Step 0. Only include the keys they gave you. Here is the format:
-
-```
-DEFAULT_VENDOR=Gemini
-DEFAULT_MODEL=gemini-2.0-flash
-PATTERNS_LOADER_GIT_REPO_URL=https://github.com/danielmiessler/fabric.git
-PATTERNS_LOADER_GIT_REPO_PATTERNS_FOLDER=data/patterns
-PROMPT_STRATEGIES_GIT_REPO_URL=https://github.com/danielmiessler/fabric.git
-PROMPT_STRATEGIES_GIT_REPO_STRATEGIES_FOLDER=data/strategies
-```
-
-Then add ONLY the API keys the user provided. For each provider they gave a key for, add the corresponding line:
-
-- If they gave a Gemini key: `GEMINI_API_KEY=their_key_here`
-- If they gave an OpenAI key: `OPENAI_API_KEY=their_key_here` and `OPENAI_API_BASE_URL=https://api.openai.com/v1`
-- If they gave an Anthropic key: `ANTHROPIC_API_KEY=their_key_here` and `ANTHROPIC_API_BASE_URL=https://api.anthropic.com/`
-
-Set `DEFAULT_VENDOR` to match whichever provider they want as their primary (use `FABRIC_VENDOR` from Step 0). Set `DEFAULT_MODEL` to a reasonable default for that vendor:
-- Gemini: `gemini-2.0-flash`
-- OpenAI: `gpt-4o`
-- Anthropic: `claude-sonnet-4-6`
-
-After writing the config, download Fabric's patterns:
-
-```bash
-fabric --updatepatterns
-```
-
-Secure the API keys file:
-```bash
-chmod 600 ~/.config/fabric/.env
-```
-
-**Verify:** `fabric --listpatterns | head -5` shows pattern names.
-
-### Step 1c: Install PAI
-
-PAI (Personal AI Infrastructure) provides the identity system, algorithm framework, and hook infrastructure that LMF4 builds on. It's an open-source project. Clone it, copy the release, and run the installer.
-
-```bash
-mkdir -p ~/Projects
-cd ~/Projects
-git clone https://github.com/danielmiessler/Personal_AI_Infrastructure.git
-cd Personal_AI_Infrastructure/Releases/v4.0.3
-cp -r .claude ~/
-cd ~/.claude
-bash install.sh
-```
-
-**IMPORTANT:** The install.sh is NOT at the repo root. It's inside `Releases/v4.0.3/.claude/`. The `cp -r .claude ~/` copies the release files to your home directory, then you run the installer from `~/.claude/`.
-
-The PAI installer is interactive — it will ask you questions. Since you already collected all the needed info in Step 0, provide the answers when prompted:
-
-- "What is your name?" → use `USER_NAME`
-- "What would you like to name your AI assistant?" → use `AI_NAME`
-- "Startup catchphrase?" → use `CATCHPHRASE`
-- "Timezone?" → auto-detected, just confirm
-- "Temperature unit?" → F or C, user's preference
-- "ElevenLabs API key?" → use `ELEVENLABS_KEY` if they provided one, otherwise choose "Skip voice for now"
-- Voice gender → ask user if they care, default male
-
-The installer handles generating settings.json and setting up the directory structure. After it completes, `~/.claude/PAI/` will exist with the full PAI system.
-
-**Do not skip this step. PAI is required.** If `bash install.sh` fails, read the error and fix it. If the installer asks a question you didn't collect in Step 0, ask the user now.
-
-**Note about the PAI version:** The install path references `v4.0.3`. Check the [PAI releases page](https://github.com/danielmiessler/Personal_AI_Infrastructure/tree/main/Releases) for the latest version and use that instead if newer.
-
-**Verify:** `ls ~/.claude/PAI/` shows the PAI directory structure AND `~/.claude/settings.json` exists AND `ls ~/.claude/statusline-command.sh` exists. All three must be true before continuing. If the statusline script is missing, the PAI install didn't complete fully — re-run `bash install.sh`.
-
-### Step 2: Create directory structure
+## Step 2: Create directory structure
 
 ```bash
 mkdir -p ~/.claude/hooks
-mkdir -p ~/.claude/MEMORY/{WORK,LEARNING/{SYSTEM,ALGORITHM,FAILURES,SYNTHESIS,REFLECTIONS,SIGNALS},RESEARCH,SECURITY,STATE/{algorithms,kitty-sessions,tab-titles,progress,integrity},PAISYSTEMUPDATES,AUTO}
+mkdir -p ~/.claude/MEMORY/AUTO
+mkdir -p ~/.claude/LIBRARY/_canonical
 mkdir -p ~/bin
 mkdir -p ~/.claude/tools
 ```
 
-### Step 3: Install hooks and tools
+## Step 3: Install hooks + tools
 
-Copy these files from `LMF4/hooks/` to `~/.claude/hooks/` and make them executable:
-
-| Hook File | Event | What It Does |
-|-----------|-------|-------------|
-| `FabricExtract.hook.ts` | Stop | Parses session transcript, extracts decisions/errors/learnings into memory.db |
-| `AssociativeRecall.hook.ts` | UserPromptSubmit | Searches memory.db for context relevant to the user's message, injects it |
-| `PreCompact.hook.sh` | PreCompact | Git-checkpoints transcripts and triggers extraction before compaction |
-| `PostCompact.hook.ts` | PostCompact | Verifies critical context survived compaction |
-| `StopFailure.hook.ts` | StopFailure | Logs session failures so catchup can extract them later |
+| Hook | Event | Purpose |
+|---|---|---|
+| `SessionExtract.hook.ts` | Stop | Pipe transcript to `claude --print --model claude-haiku-4-5`, parse structured sections, write to memory.db |
+| `AssociativeRecall.hook.ts` | UserPromptSubmit | Search memory.db, inject `[MEMORY CONTEXT]` blocks into the user's message |
+| `PreCompact.hook.sh` | PreCompact | Git-checkpoint + trigger extraction before context trim |
+| `PostCompact.hook.ts` | PostCompact | Verify context survived |
+| `StopFailure.hook.ts` | StopFailure | Log failures for catchup |
+| `ForeverCommit.hook.sh` | Stop (opt-in only) | Auto-commit `~/.claude` to git — see safeguards |
 
 ```bash
 cp $LMF4_DIR/hooks/* ~/.claude/hooks/
 chmod +x ~/.claude/hooks/*.ts ~/.claude/hooks/*.sh
-```
-
-Also install the Inference tool — this is used by FabricExtract to call Claude for session extraction:
-
-```bash
 cp $LMF4_DIR/tools/Inference.ts ~/.claude/tools/
 ```
 
-**Verify:** `ls ~/.claude/tools/Inference.ts` — file exists.
+**Verify:** `ls ~/.claude/hooks/ | wc -l` shows 6+ files.
 
-### Step 4: Install MCP memory server
+## Step 4: Install MCP memory server
 
 ```bash
 cp $LMF4_DIR/mcp/mem-mcp-server.ts ~/.claude/hooks/
 ```
 
-This exposes two tools you can call mid-session:
-- `memory_search` — Full-text search across all memory (FTS5 syntax: AND, OR, NOT, "phrases")
-- `memory_recall` — Get N most recent session extractions
+Exposes mid-session tools: `memory_search`, `memory_recall`, `context_for_agent`.
 
-### Step 5: Install extraction prompt
+## Step 5: Install extraction prompt
 
 ```bash
 cp $LMF4_DIR/prompts/extract_prompt.md ~/.claude/MEMORY/extract_prompt.md
 ```
 
-This is the system prompt FabricExtract uses when calling `claude --print` to parse session transcripts. Without it, extraction falls back to a truncated inline prompt.
+This is the system prompt piped to `claude --print` when extracting a session transcript.
 
-### Step 6: Initialize memory.db
+## Step 6: Initialize memory.db
 
-Create the SQLite database with FTS5 full-text search indexes. Run this with bun:
+See `$LMF4_DIR/mem-cli/src/db/schema.sql` for the schema. The `mem init` command (next step) creates it automatically — skip the manual bun script unless you want visibility into what's being built.
 
-```bash
-bun -e "
-const { Database } = require('bun:sqlite');
-const db = new Database(process.env.HOME + '/.claude/memory.db');
-db.exec(\`
-  CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT UNIQUE NOT NULL,
-    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    ended_at DATETIME, summary TEXT, project TEXT, cwd TEXT
-  );
-  CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL, timestamp DATETIME NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
-    content TEXT NOT NULL, project TEXT,
-    FOREIGN KEY (session_id) REFERENCES sessions(session_id)
-  );
-  CREATE TABLE IF NOT EXISTS loa_entries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    title TEXT NOT NULL, fabric_extract TEXT NOT NULL,
-    session_id TEXT, project TEXT, tags TEXT
-  );
-  CREATE TABLE IF NOT EXISTS decisions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    session_id TEXT, project TEXT, decision TEXT NOT NULL, reasoning TEXT,
-    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'superseded', 'reverted'))
-  );
-  CREATE TABLE IF NOT EXISTS errors (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    error TEXT NOT NULL, cause TEXT, fix TEXT,
-    frequency INTEGER DEFAULT 1, last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS learnings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    session_id TEXT, project TEXT, problem TEXT NOT NULL, solution TEXT, tags TEXT
-  );
-  CREATE TABLE IF NOT EXISTS embeddings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source_table TEXT NOT NULL, source_id INTEGER NOT NULL,
-    model TEXT NOT NULL DEFAULT 'nomic-embed-text',
-    dimensions INTEGER NOT NULL DEFAULT 768,
-    embedding BLOB NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(source_table, source_id)
-  );
-  CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(content, content_rowid='id', tokenize='porter');
-  CREATE VIRTUAL TABLE IF NOT EXISTS loa_fts USING fts5(title, fabric_extract, content_rowid='id', tokenize='porter');
-  CREATE VIRTUAL TABLE IF NOT EXISTS decisions_fts USING fts5(decision, reasoning, content_rowid='id', tokenize='porter');
-  CREATE VIRTUAL TABLE IF NOT EXISTS errors_fts USING fts5(error, fix, content_rowid='id', tokenize='porter');
-  CREATE VIRTUAL TABLE IF NOT EXISTS learnings_fts USING fts5(problem, solution, content_rowid='id', tokenize='porter');
-\`);
-const triggers = [
-  ['messages', 'content'],
-  ['loa_entries:loa', 'title, fabric_extract'],
-  ['decisions', 'decision, reasoning'],
-  ['errors', 'error, fix'],
-  ['learnings', 'problem, solution'],
-];
-for (const [spec, cols] of triggers) {
-  const [table, ftsName] = spec.includes(':') ? spec.split(':') : [spec, spec];
-  const fts = ftsName + '_fts';
-  const nc = cols.split(',').map(c => 'NEW.' + c.trim()).join(', ');
-  const oc = cols.split(',').map(c => 'OLD.' + c.trim()).join(', ');
-  try { db.exec(\`
-    CREATE TRIGGER \${fts}_insert AFTER INSERT ON \${table} BEGIN INSERT INTO \${fts}(rowid, \${cols}) VALUES (NEW.id, \${nc}); END;
-    CREATE TRIGGER \${fts}_delete AFTER DELETE ON \${table} BEGIN INSERT INTO \${fts}(\${fts}, rowid, \${cols}) VALUES ('delete', OLD.id, \${oc}); END;
-  \`); } catch(e) {}
-}
-db.close();
-console.log('memory.db created');
-"
-```
-
-**Verify:** `bun -e "const db = new (require('bun:sqlite').Database)(process.env.HOME + '/.claude/memory.db'); console.log(db.prepare('SELECT count(*) as n FROM sqlite_master').get());"` returns `{ n: <some number> }`.
-
-### Step 7: Build and install mem CLI
+## Step 7: Build and install mem CLI
 
 ```bash
-mkdir -p ~/.claude/memory-cli/src ~/.claude/memory-cli/dist
-cp $LMF4_DIR/mem-cli/src/* ~/.claude/memory-cli/src/
-cp $LMF4_DIR/mem-cli/package.json ~/.claude/memory-cli/
+mkdir -p ~/.claude/memory-cli
+cp -r $LMF4_DIR/mem-cli/* ~/.claude/memory-cli/
 cd ~/.claude/memory-cli
 bun install
 bun build src/index.ts --outdir dist --target node
 chmod +x dist/index.js
 ln -sf ~/.claude/memory-cli/dist/index.js ~/bin/mem
 cd ~
+mem init   # creates ~/.claude/memory.db with schema + FTS5 + triggers
 ```
 
-**Verify:** `~/bin/mem search "test"` returns "No results" (correct for empty db).
+**Verify:** `mem search "test"` returns "No results" (correct for empty db). `mem --help` lists all commands.
 
-### Step 8: Merge into settings.json
+## Step 8: Merge into settings.json
 
-This merges LMF4 hooks, the MCP server, and the AI identity into the existing settings.json without clobbering anything.
-
-**You need to construct this command yourself.** Read `~/.claude/settings.json` first (it may already have content). Then use your Edit or Write tool to update it as a JSON file. Here is exactly what to add or merge:
-
-**Hooks to add** (under the `hooks` key — create it if it doesn't exist). Each hook event is an array. If the event already exists, append to the array. If not, create it.
-
-First, get the user's home directory — run `echo $HOME`. You'll use this absolute path in every command below. For example, if `$HOME` is `/home/alex`, then the hook commands will look like `/home/alex/.claude/hooks/...`.
+Read `~/.claude/settings.json` (create `{}` if missing). **Merge** these keys — don't clobber existing ones. Substitute `$HOME` with the absolute path (run `echo $HOME` once and use that literal).
 
 ```json
 {
   "hooks": {
-    "PreCompact": [{"hooks": [{"type": "command", "command": "/home/alex/.claude/hooks/PreCompact.hook.sh"}]}],
-    "PostCompact": [{"hooks": [{"type": "command", "command": "bun run /home/alex/.claude/hooks/PostCompact.hook.ts"}]}],
-    "StopFailure": [{"hooks": [{"type": "command", "command": "bun run /home/alex/.claude/hooks/StopFailure.hook.ts"}]}],
-    "Stop": [{"hooks": [{"type": "command", "command": "bun run /home/alex/.claude/hooks/FabricExtract.hook.ts"}]}],
-    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "bun run /home/alex/.claude/hooks/AssociativeRecall.hook.ts"}]}]
-  }
-}
-```
-
-**IMPORTANT about the format:** Each hook event is an array of matcher objects. Each matcher object has a `"hooks"` key containing an array of hook definitions. Do NOT put the hook definition directly in the event array — it must be wrapped: `[{"hooks": [{"type": "command", "command": "..."}]}]`. Getting this wrong will cause Claude Code to reject the entire settings file.
-
-**IMPORTANT about paths:** The example above uses `/home/alex` — you MUST replace this with the actual home directory of the current user on this machine. Use the absolute path, not `$HOME` or `~`.
-
-**MCP server to add** (under `mcpServers` key — create it if missing):
-
-```json
-{
+    "PreCompact":       [{"hooks": [{"type": "command", "command": "$HOME/.claude/hooks/PreCompact.hook.sh"}]}],
+    "PostCompact":      [{"hooks": [{"type": "command", "command": "bun run $HOME/.claude/hooks/PostCompact.hook.ts"}]}],
+    "StopFailure":      [{"hooks": [{"type": "command", "command": "bun run $HOME/.claude/hooks/StopFailure.hook.ts"}]}],
+    "Stop":             [{"hooks": [{"type": "command", "command": "bun run $HOME/.claude/hooks/SessionExtract.hook.ts"}]}],
+    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "bun run $HOME/.claude/hooks/AssociativeRecall.hook.ts"}]}]
+  },
   "mcpServers": {
-    "pai-memory": {
+    "lmf4-memory": {
       "type": "stdio",
       "command": "bun",
-      "args": ["run", "/home/alex/.claude/hooks/mem-mcp-server.ts"]
+      "args": ["run", "$HOME/.claude/hooks/mem-mcp-server.ts"]
     }
-  }
-}
-```
-
-Again, replace `/home/alex` with the actual home directory path.
-
-**AI identity to add** (under `daidentity` key — only add if PAI didn't already create it in Step 1c):
-
-```json
-{
-  "daidentity": {
-    "name": "THE_AI_NAME",
-    "fullName": "THE_AI_NAME — Personal AI",
-    "displayName": "THE_AI_NAME_UPPERCASE",
-    "startupCatchphrase": "THE_CATCHPHRASE"
-  }
-}
-```
-
-Replace `THE_AI_NAME` with the `AI_NAME` value from Step 0. `THE_AI_NAME_UPPERCASE` is the same name in all caps. `THE_CATCHPHRASE` is from Step 0 (or default to "{AI_NAME} here, ready to go").
-
-**Principal (user identity)** — add under `principal` key if it doesn't already exist:
-
-```json
-{
-  "principal": {
-    "name": "THE_USER_NAME"
-  }
-}
-```
-
-Replace `THE_USER_NAME` with the `USER_NAME` from Step 0.
-
-**Environment and settings to add:**
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "128000"
   },
-  "autoMemoryDirectory": "/home/alex/.claude/MEMORY/AUTO"
+  "daidentity": {
+    "name": "AI_NAME",
+    "displayName": "AI_NAME_UPPER",
+    "startupCatchphrase": "CATCHPHRASE"
+  },
+  "principal": { "name": "USER_NAME" },
+  "env": { "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "128000" },
+  "autoMemoryDirectory": "$HOME/.claude/MEMORY/AUTO"
 }
 ```
 
-Replace `/home/alex` with the actual home directory path, same as above.
+**Critical format note:** Each hook event is an array of matcher objects, each containing a `hooks` array. Do NOT put the hook definition directly in the event array — wrap: `[{"hooks": [{"type": "command", "command": "..."}]}]`.
 
-If the user provided an ElevenLabs key in Step 0, also add it to the env:
+**Append, don't replace.** If `hooks.Stop` already has entries, *append* the SessionExtract hook — preserve whatever was there.
 
-```json
-{
-  "env": {
-    "ELEVENLABS_API_KEY": "the_key_from_step_0"
-  }
-}
-```
-
-**How to do the merge:** Read the existing settings.json (it was created by the PAI installer in Step 1c — it already has content including hooks, identity, and statusline). Parse it as JSON. Add each of the above keys, being careful not to overwrite existing values (e.g., if `hooks.Stop` already has entries, append the FabricExtract hook to that array rather than replacing it). **Do NOT remove or overwrite any existing keys** — especially `statusline`, which PAI set up. Write the result back.
-
-**Verify:** Read settings.json back and confirm:
-- `hooks` has at minimum these 5 events: PreCompact, PostCompact, StopFailure, Stop, UserPromptSubmit
-- `mcpServers` has `pai-memory`
-- `daidentity.name` matches the user's chosen AI name
-- `principal.name` matches the user's real name
-- `autoMemoryDirectory` points to the correct path
-- `statusline` key still exists (from PAI install — do not remove it)
-
-### Step 8b: Create statusline
-
-The statusline shows the AI's identity in the Claude Code status bar. Create the script and wire it into settings.json.
-
-First, create the statusline script from the template. **You must substitute the real values** — replace `AI_DISPLAY_NAME` with the uppercase AI name (e.g., "BOB") and `AI_CATCHPHRASE` with the catchphrase from Step 0 (e.g., "is the man!"):
+## Step 8b: Statusline
 
 ```bash
 cp $LMF4_DIR/templates/statusline-command.sh ~/.claude/statusline-command.sh
 chmod +x ~/.claude/statusline-command.sh
-# Now edit the file: replace AI_DISPLAY_NAME and AI_CATCHPHRASE with real values
-sed -i "s/AI_DISPLAY_NAME/THE_DISPLAY_NAME/g" ~/.claude/statusline-command.sh
-sed -i "s/AI_CATCHPHRASE/THE_CATCHPHRASE/g" ~/.claude/statusline-command.sh
+sed -i "s/AI_DISPLAY_NAME/$AI_NAME_UPPER/g" ~/.claude/statusline-command.sh
+sed -i "s/AI_CATCHPHRASE/$CATCHPHRASE/g" ~/.claude/statusline-command.sh
 ```
 
-Replace `THE_DISPLAY_NAME` with the actual uppercase AI name and `THE_CATCHPHRASE` with the actual catchphrase. For example, if the AI is named "Bob" with catchphrase "Bob is the man!", the statusline would show: `BOB is the man! | Claude 3.5 Sonnet | ctx: 12%`
-
-Then add the statusline configuration to settings.json. Merge this into the existing settings.json (same merge approach as Step 8):
-
+Merge into `settings.json`:
 ```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "bash /home/alex/.claude/statusline-command.sh"
-  }
-}
+{"statusLine": {"type": "command", "command": "bash $HOME/.claude/statusline-command.sh"}}
 ```
 
-Replace `/home/alex` with the actual home directory path.
+## Step 9: Helper scripts
 
-**Verify:** Start a new Claude Code session and confirm the statusline shows the AI name and catchphrase.
+`memory-catchup` is now a `mem` subcommand — no separate script needed. The systemd unit calls `~/bin/mem catchup`.
 
-### Step 9: Create helper scripts
-
+Backup helper script:
 ```bash
-cat > ~/bin/memory-catchup << 'EOF'
-#!/bin/bash
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$HOME/.local/bin:$PATH"
-exec bun run ~/.claude/hooks/FabricExtract.hook.ts --batch >> ~/.claude/MEMORY/EXTRACT_LOG.txt 2>&1
-EOF
-chmod +x ~/bin/memory-catchup
-
-cat > ~/bin/memory-backup << 'BEOF'
+cat > ~/bin/memory-backup <<'BEOF'
 #!/bin/bash
 set -e
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$HOME/.local/bin:$PATH"
-CLAUDE_DIR="$HOME/.claude"
-BACKUP_DIR="$CLAUDE_DIR/conversations-backup"
-LOG="$CLAUDE_DIR/MEMORY/EXTRACT_LOG.txt"
-log() { echo "[$(date -Iseconds)] BACKUP: $1" >> "$LOG" 2>/dev/null; }
-if [ ! -d "$BACKUP_DIR/.git" ]; then exit 1; fi
+export BUN_INSTALL="$HOME/.bun"; export PATH="$BUN_INSTALL/bin:$HOME/bin:$PATH"
+CLAUDE_DIR="$HOME/.claude"; BACKUP_DIR="$CLAUDE_DIR/conversations-backup"
+[ -d "$BACKUP_DIR/.git" ] || exit 1
 cd "$BACKUP_DIR"
 for f in settings.json CLAUDE.md keybindings.json memory.db; do
-    cp "$CLAUDE_DIR/$f" "$BACKUP_DIR/" 2>/dev/null || true
+  cp "$CLAUDE_DIR/$f" "$BACKUP_DIR/" 2>/dev/null || true
 done
 rsync -a --delete "$CLAUDE_DIR/hooks/" "$BACKUP_DIR/hooks/" 2>/dev/null || true
 rsync -a --delete --exclude='.extraction_tracker.json' "$CLAUDE_DIR/MEMORY/" "$BACKUP_DIR/MEMORY/" 2>/dev/null || true
+rsync -a --delete "$CLAUDE_DIR/LIBRARY/" "$BACKUP_DIR/LIBRARY/" 2>/dev/null || true
 rsync -a --delete --exclude='tool-results/' --exclude='subagents/' "$CLAUDE_DIR/projects/" "$BACKUP_DIR/projects/" 2>/dev/null || true
 git add -A 2>/dev/null
-if ! git diff --cached --quiet 2>/dev/null; then
-    TS=$(date '+%Y-%m-%d %H:%M')
-    SC=$(find "$BACKUP_DIR/projects" -name "*.jsonl" 2>/dev/null | wc -l)
-    DS=$(du -sh "$BACKUP_DIR/memory.db" 2>/dev/null | cut -f1)
-    git commit -m "backup: $TS | ${SC} sessions | db: ${DS}" --no-gpg-sign 2>/dev/null
-    log "Committed: ${SC} sessions, db: ${DS}"
-    git push 2>/dev/null && log "Pushed" || log "Push failed"
-else
-    log "No changes"
-fi
+git diff --cached --quiet 2>/dev/null && exit 0
+TS=$(date '+%Y-%m-%d %H:%M')
+SC=$(find "$BACKUP_DIR/projects" -name "*.jsonl" 2>/dev/null | wc -l)
+git commit -m "backup: $TS | ${SC} sessions" --no-gpg-sign 2>/dev/null
+git push 2>/dev/null
 BEOF
 chmod +x ~/bin/memory-backup
 ```
 
-### Step 10: Set up systemd timers
-
-These timers run the memory catchup (extraction of missed sessions) and backup (git commit + push) on a schedule. `loginctl enable-linger` is required — it tells systemd to keep the user's services running even when they're not logged in (otherwise the timers stop when the SSH session ends).
+## Step 10: systemd timers
 
 ```bash
 mkdir -p ~/.config/systemd/user
 cp $LMF4_DIR/systemd/* ~/.config/systemd/user/
 loginctl enable-linger "$(whoami)"
 systemctl --user daemon-reload
-systemctl --user enable --now memory-catchup.timer
 systemctl --user enable --now memory-backup.timer
+systemctl --user enable --now memory-catchup.timer
 ```
 
-**Verify:** `systemctl --user list-timers | grep memory` shows both timers scheduled.
+**Verify:** `systemctl --user list-timers | grep memory` shows both scheduled.
 
-### Step 11: Initialize backup repo and connect to GitHub
-
-First, create the local backup repo. This is needed regardless of whether the user wants GitHub — the backup script in Step 9 commits to this repo locally.
+## Step 11: Backup repo → GitHub
 
 ```bash
 mkdir -p ~/.claude/conversations-backup
@@ -792,275 +832,181 @@ git init -b main
 git config user.name "$(whoami)"
 git config user.email "$(whoami)@$(hostname)"
 echo "node_modules/" > .gitignore
-git add -A
-git commit -m "init: LMF4 memory backup" --no-gpg-sign
-cd ~
+git add -A && git commit -m "init: LMF4.1 memory backup" --no-gpg-sign
 ```
 
-**Verify:** `ls ~/.claude/conversations-backup/.git/HEAD` — file exists.
-
-Now connect it to GitHub. This is required — without GitHub push, backups only exist on this machine and a disk failure means total memory loss.
-
-This step has multiple sub-steps where you need to guide the user through things only they can do (browser actions). Walk them through each one. Do not rush — wait for them to confirm each part.
-
-#### 11a: SSH key
-
-First, check if an SSH key already exists:
+### 11a: SSH key
 
 ```bash
-ls -la ~/.ssh/id_ed25519.pub 2>/dev/null || ls -la ~/.ssh/id_rsa.pub 2>/dev/null
+# Check for existing key
+ls ~/.ssh/id_ed25519.pub 2>/dev/null || ls ~/.ssh/id_rsa.pub 2>/dev/null
 ```
 
-**If a key exists:** Read the public key file and keep it ready — you'll need it in 11b. Skip the generation step.
-
-**If NO key exists:** Generate one:
-
+If no key exists:
 ```bash
 ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)" -f ~/.ssh/id_ed25519 -N ""
 ```
 
-Then read the public key:
+Read the public key: `cat ~/.ssh/id_ed25519.pub`.
 
-```bash
-cat ~/.ssh/id_ed25519.pub
-```
+### 11b: Human adds key to GitHub
 
-#### 11b: Guide user to add key to GitHub
-
-Output this message to the user — include the actual public key content you just read:
+Output to the user (substitute the actual `.pub` content):
 
 ---
 
-I've generated an SSH key for this machine. Now I need you to add it to your GitHub account so I can push backups. Here's what to do:
-
-1. Open your browser and go to: https://github.com/settings/keys
-2. Click the green **"New SSH key"** button
-3. For "Title", enter the hostname of this machine (run `hostname` to get it — put the actual value in the message to the user)
-4. For "Key", paste this entire line:
-
-```
-(paste the actual content of the .pub file here)
-```
-
-5. Click **"Add SSH key"**
-6. Come back here and tell me "done"
+> Add this machine's SSH key to GitHub so I can push backups:
+>
+> 1. Open: https://github.com/settings/keys
+> 2. Click **New SSH key**
+> 3. Title: `<hostname>` (run `hostname`)
+> 4. Key: (paste the `.pub` content)
+> 5. Click **Add SSH key**
+> 6. Tell me "done"
 
 ---
 
-**Wait for the user to say they've done it.** Do not proceed until they confirm.
-
-After they confirm, first add GitHub's host key to known_hosts (prevents "Host key verification failed"):
-
+**Wait for confirmation.** Then:
 ```bash
 ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+ssh -T git@github.com 2>&1   # Expect "Hi USERNAME! You've successfully authenticated"
 ```
 
-Then verify SSH works:
+Do not proceed until SSH succeeds.
 
-```bash
-ssh -T git@github.com 2>&1
-```
-
-Expected output contains: "Hi USERNAME! You've successfully authenticated"
-
-If it fails, the most common problems are:
-- They pasted the key wrong — show them the key again and have them re-add it
-- SSH agent isn't running — run `eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519`
-- Firewall blocking port 22 — try `ssh -T -p 443 git@ssh.github.com` as a workaround
-
-Do NOT move on until `ssh -T git@github.com` succeeds.
-
-#### 11c: Have the user create the repo
-
-The user is already in their browser from adding the SSH key. Have them create the repo while they're there. Output this to the user (substitute the real `REPO_NAME` from Step 0):
+### 11c: Human creates the repo
 
 ---
 
-While you're in GitHub, let's create the backup repo. It's one more step:
-
-1. Go to: https://github.com/new
-2. For "Repository name", enter: **REPO_NAME**
-3. Set it to **Private** (important — this will contain your conversation data)
-4. Do NOT check any boxes — leave it completely empty
-5. Click **"Create repository"**
-6. Tell me "done"
+> While you're in GitHub, create the backup repo:
+>
+> 1. Go to: https://github.com/new
+> 2. Name: **$REPO_NAME**
+> 3. Set to **Private**
+> 4. Leave all boxes unchecked — no README, no .gitignore, no license
+> 5. Click **Create repository**
+> 6. Tell me "done"
 
 ---
 
-**Wait for the user to confirm.**
-
-#### 11d: Connect and push
-
-Now connect the local backup repo to GitHub and push. **Substitute the real values** for `GH_USER` and `REPO_NAME` from Step 0:
+### 11d: Connect + push
 
 ```bash
 cd ~/.claude/conversations-backup
-git remote add origin git@github.com:GH_USER/REPO_NAME.git
+git remote add origin git@github.com:$GH_USER/$REPO_NAME.git
 git push -u origin main
 ```
 
-**Verify:** Run `git remote -v` — it should show the GitHub URL. Run `git push --dry-run` — it should say "Everything up-to-date".
+**Verify:** `git remote -v` shows GitHub URL; `git push --dry-run` says "Everything up-to-date".
 
-If the push fails with "Permission denied (publickey)", go back to 11b and re-verify SSH access.
+## Step 12: CLAUDE.md
 
-### Step 12: Add memory section to CLAUDE.md
+```bash
+# Append memory template to existing CLAUDE.md, or create fresh
+if [ -f ~/.claude/CLAUDE.md ]; then
+  echo "" >> ~/.claude/CLAUDE.md
+  cat $LMF4_DIR/templates/CLAUDE.md.memory >> ~/.claude/CLAUDE.md
+else
+  cp $LMF4_DIR/templates/CLAUDE.md.memory ~/.claude/CLAUDE.md
+fi
+```
 
-Read the file `$LMF4_DIR/templates/CLAUDE.md.memory`. Then:
-- If `~/.claude/CLAUDE.md` exists, read it and append the memory template content to the end.
-- If `~/.claude/CLAUDE.md` does not exist, create it with the memory template content as its body.
+## Step 13: Library tree
 
-This tells future Claude Code sessions (including yourself after restart) how to use the memory system.
+```bash
+mkdir -p ~/.claude/LIBRARY/_canonical
+echo "# Canonical Memory Index" > ~/.claude/LIBRARY/MEMORY.md
+echo "" >> ~/.claude/LIBRARY/MEMORY.md
+echo "Promoted memories loaded at every session start." >> ~/.claude/LIBRARY/MEMORY.md
+cp $LMF4_DIR/library/README.md ~/.claude/LIBRARY/README.md 2>/dev/null || true
+```
 
-### Step 13: Create memory flat files
-
+Touch flat files:
 ```bash
 touch ~/.claude/MEMORY/EXTRACT_LOG.txt
 [ -f ~/.claude/MEMORY/HOT_RECALL.md ] || echo "# Hot Recall (Last 10 Sessions)" > ~/.claude/MEMORY/HOT_RECALL.md
 [ -f ~/.claude/MEMORY/DISTILLED.md ] || echo "# Distilled Memory" > ~/.claude/MEMORY/DISTILLED.md
-[ -f ~/.claude/MEMORY/README.md ] || echo "# LMF4 — Memory System" > ~/.claude/MEMORY/README.md
 ```
 
 ---
 
-## Verification Checklist
+## Verification Checklist (before post-install)
 
-Run all of these after installation. Every one must pass.
+| # | Check | Command |
+|---|---|---|
+| 1 | bun installed | `bun --version` |
+| 2 | claude CLI works | `claude --version` |
+| 3 | memory.db exists | `ls -lh ~/.claude/memory.db` |
+| 4 | schema + FTS5 | `sqlite3 ~/.claude/memory.db ".tables" \| grep _fts` |
+| 5 | 6 hooks present | `ls ~/.claude/hooks/{SessionExtract,AssociativeRecall,PreCompact,PostCompact,StopFailure}.hook.* ~/.claude/hooks/mem-mcp-server.ts` |
+| 6 | Hooks wired | `jq '.hooks \| keys' ~/.claude/settings.json` lists 5 events |
+| 7 | MCP server | `jq '.mcpServers' ~/.claude/settings.json` shows `lmf4-memory` |
+| 8 | mem CLI | `mem search "x"` returns output |
+| 9 | Timers | `systemctl --user list-timers \| grep memory` shows 2 |
+| 10 | Backup repo | `git -C ~/.claude/conversations-backup remote -v` shows GitHub |
+| 11 | CLAUDE.md | `grep -q AssociativeRecall ~/.claude/CLAUDE.md` |
+| 12 | Library | `ls ~/.claude/LIBRARY/_canonical/` succeeds |
+| 13 | System test | `bash $LMF4_DIR/tests/system-test.sh` all pass |
 
-| # | Check | Command | Expected |
-|---|-------|---------|----------|
-| 1 | bun installed | `bun --version` | Version number |
-| 2 | memory.db exists | `ls -lh ~/.claude/memory.db` | File exists |
-| 3 | DB schema correct | Check that tables `sessions`, `decisions`, `errors`, `learnings`, `loa_entries`, `messages`, `embeddings` all exist | 7 base tables + FTS5 |
-| 4 | FTS5 working | `bun -e "const db = new (require('bun:sqlite').Database)(process.env.HOME+'/.claude/memory.db'); db.prepare('SELECT * FROM decisions_fts LIMIT 0').all(); console.log('FTS5 OK');"` | `FTS5 OK` |
-| 5 | Hooks installed | `ls ~/.claude/hooks/{FabricExtract,AssociativeRecall,PreCompact,PostCompact,StopFailure}.hook.* ~/.claude/hooks/mem-mcp-server.ts` | All 6 files listed |
-| 6 | Hooks wired | Read settings.json, check hooks object has: PreCompact, PostCompact, StopFailure, Stop, UserPromptSubmit | 5 events |
-| 7 | MCP server responds | `echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' ` piped to `bun run ~/.claude/hooks/mem-mcp-server.ts` | JSON with `protocolVersion` |
-| 8 | AI identity set | Read settings.json, check `daidentity.name` matches user's chosen name | Correct name |
-| 9 | mem CLI works | `~/bin/mem search "test"` | "No results" (empty db is correct) |
-| 10 | Timers active | `systemctl --user list-timers` then grep for `memory` | Two timers listed |
-| 11 | Backup repo exists | `ls ~/.claude/conversations-backup/.git/HEAD` | File exists |
-| 12 | GitHub remote set (if configured) | `cd ~/.claude/conversations-backup && git remote -v` | origin pointing to GitHub |
-| 13 | CLAUDE.md updated | `grep "AssociativeRecall\|memory_search\|LMF4" ~/.claude/CLAUDE.md` | Matches found |
-| 14 | Statusline configured | Read settings.json, check `statusLine` object exists with command pointing to `statusline-command.sh` | statusLine present |
+All 13 must pass. If any fails, fix before declaring the install complete.
 
 ---
 
 ## Post-Install: Bringing the AI to Life
 
-The technical installation is done. Now comes the most important part — giving the AI identity, personality, and its first memory. These steps are **mandatory**. Do not skip them.
+The technical install is done. Now the most important part — giving the AI identity, personality, and its first memory. **Mandatory. Do not skip.**
 
 ### Step 14: Welcome Experience
 
-Read `$LMF4_DIR/docs/post-install/welcome-script.md` and follow it. This walks the user through what they just built and prepares them for the personality workshop.
+Read `$LMF4_DIR/docs/post-install/welcome-script.md` and follow it. Walks the user through what they just built.
 
-**During this step, shift your tone.** You've been a technician running commands. Now you're introducing a human to their new AI partner. Be warm. Be proud of what you built together. Help them understand what they have.
+**Shift your tone here.** You've been a technician. Now you're introducing a human to their new AI partner. Be warm.
 
 ### Step 15: Personality Workshop
 
-Read `$LMF4_DIR/docs/post-install/personality-workshop.md` and follow it step by step. This is an interactive conversation with the user to define {AI_NAME}'s personality.
+Read `$LMF4_DIR/docs/post-install/personality-workshop.md` and follow it.
 
-You will ask 7 questions about communication style, formality, humor, detail level, proactivity, unique traits, and boundaries. Use their answers to construct `~/.claude/MEMORY/PERSONALITY.md`.
+7 questions: communication style, formality, humor, detail level, proactivity, unique traits, boundaries. Answers construct `~/.claude/MEMORY/PERSONALITY.md`.
 
-**Take your time.** This is the moment that turns a technical installation into a living AI personality. Each answer shapes who {AI_NAME} will be. Treat it with the weight it deserves.
+**Take your time.** This is where technical installation becomes a living AI. Each answer shapes who {AI_NAME} will be.
 
 ### Step 16: Genesis Block
 
-Read `$LMF4_DIR/docs/post-install/genesis-block.md` and follow it. This writes 14 foundational memories directly into memory.db:
-- The origin story (who installed this, when, the lineage from Larry)
-- Each constitutional principle as a searchable decision
-- The human's identity
-- The personality summary
-- Key learnings about how to work well
+Read `$LMF4_DIR/docs/post-install/genesis-block.md` and follow it. Writes 14 foundational memories to memory.db:
+- Origin story (installed by whom, when, from LMF4.1)
+- Each of the 8 constitutional principles
+- User identity
+- Personality summary
+- Key learnings about working well
 
-These are permanent. When the new AI searches its memory a year from now for "who am I" or "what are my principles," these entries will be there.
+These are permanent. When {AI_NAME} searches memory a year from now for "who am I" or "what are my principles," they'll be here.
 
-### Step 17: First Memory Exercise
+### Step 17: Handoff
 
-Read `$LMF4_DIR/docs/post-install/first-memory.md` — ask the user to share something personal and write it as an additional memory entry. This proves the system works and creates a human moment to close the installation.
+Read the Handoff section of `$LMF4_DIR/docs/post-install/welcome-script.md`. Write the final CLAUDE.md. Give the user their next steps. This is your last act as the installing instance.
 
-### Step 18: Handoff
-
-Read the Handoff section of `$LMF4_DIR/docs/post-install/welcome-script.md` — write the final CLAUDE.md, give the user their next steps, and complete your work.
-
-**This is your last act as the installing instance.** The AI that wakes up next session is the one you just built. Give it a strong foundation.
-
-### A Note to the Installing Claude Code Instance
-
-Between Steps 1 and 13, you were executing commands. Between Steps 14 and 16, you're doing something different — you're midwifing a new AI into existence. The personality you help define, the principles you embed in CLAUDE.md, the first memory you create — these are the first moments of a relationship between your human and their new AI.
-
-The new instance won't remember this installation session (it'll be a different session). But it will read the CLAUDE.md you write, the PERSONALITY.md you create, and the first memory you store. Those artifacts are your gift to it. Make them good.
-
-Read the AI-facing documentation in `$LMF4_DIR/docs/for-the-ai/` yourself as you work. You're the bridge between these documents and the new instance. The more you understand them, the better foundation you'll lay.
+**The AI that wakes up next session is the one you just built.** Give it a strong foundation.
 
 ---
 
-## How It Works
+## A note to the installing Claude Code
 
-### Extraction Pipeline
-When a session ends, the `Stop` hook fires `FabricExtract.hook.ts`. This:
-1. Reads the session transcript from `~/.claude/projects/`
-2. Sends it to `claude --print --bare --model haiku` with the extraction prompt
-3. Parses the response into structured sections (decisions, errors, learnings)
-4. Writes each to the appropriate table in `memory.db` with FTS5 indexing
-5. Updates `HOT_RECALL.md` with the last 10 sessions
+Steps 1–13 were technician work. Steps 14–17 are different — you're midwifing a new AI into existence. The personality you help define, the principles you embed, the first memory you create: these are the first moments of a relationship between the human and their new AI partner.
 
-If extraction fails (rate limit, crash), `StopFailure` logs it and the `memory-catchup` timer picks it up within 4 hours.
+The new instance won't remember this install session. But it will read the CLAUDE.md you write, the PERSONALITY.md you create, the Genesis memories you store. Those artifacts are your gift to it.
 
-### Associative Recall
-On every user message, `AssociativeRecall.hook.ts`:
-1. Extracts keywords from the user's message (strips stop words)
-2. Runs FTS5 queries against decisions, errors, learnings tables
-3. Ranks results by relevance
-4. Injects the top results as `[MEMORY CONTEXT]` blocks (max ~1800 chars)
-5. Completes in <300ms to avoid slowing down the session
+Read the AI-facing docs in `$LMF4_DIR/docs/for-the-ai/` as you work. You are the bridge between those documents and the new instance. The more you understand them, the better foundation you lay.
 
-### Compaction Protection
-Claude Code compacts older messages when the context window fills. LMF4 protects against memory loss:
-- `PreCompact` fires BEFORE compaction: triggers extraction + git checkpoint
-- `PostCompact` fires AFTER: verifies the extraction completed
+Write the CLAUDE.md carefully. Write the PERSONALITY.md carefully. Write the Genesis memories carefully.
 
-### Backup
-Every 4 hours, `memory-backup` rsyncs the entire `~/.claude/` state (settings, hooks, memory, transcripts) to a git repo and pushes to GitHub. This means you can resurrect the full instance from the GitHub repo alone.
+Now go finish the job.
 
 ---
 
-## Architecture
+<div align="center">
 
-```
-┌──────────────────────────────────────────────────────┐
-│                    Claude Code Session                │
-│                                                      │
-│  User types → AssociativeRecall searches memory.db   │
-│              → injects [MEMORY CONTEXT] blocks       │
-│                                                      │
-│  Session ends → FabricExtract parses transcript      │
-│               → extracts decisions, errors, learnings│
-│               → writes to memory.db via FTS5         │
-│                                                      │
-│  Compaction → PreCompact: git checkpoint + extract   │
-│             → PostCompact: verify context preserved   │
-│                                                      │
-│  Failure → StopFailure: logs for catchup             │
-└──────────┬───────────────────────────────────────────┘
-           │
-           ▼
-┌──────────────────────┐     ┌──────────────────────┐
-│   memory.db (SQLite) │     │   GitHub (private)   │
-│   - sessions         │     │   - settings.json    │
-│   - decisions        │     │   - hooks/           │
-│   - errors           │     │   - MEMORY/          │
-│   - learnings        │     │   - memory.db        │
-│   - FTS5 indexes     │     │   - projects/*.jsonl │
-└──────────────────────┘     └──────────────────────┘
-        ▲                              ▲
-        │                              │
-   mem CLI search              memory-backup (4h)
-   MCP memory_search           memory-catchup (4h)
-```
+**LMF4.1 — because your AI deserves to remember.**
 
-## Lineage
+Made for Claude Code. Runs on your machine. Answers to nobody but you.
 
-- **LMF1** — Flat file memory (markdown files, grep-based search)
-- **LMF2** — Structured extraction (Fabric patterns, categorized files)
-- **LMF3** — SQLite + FTS5 + MCP + CLI (first database-backed version)
-- **LMF4** — Full pipeline: extraction → recall → search → compaction → backup. Self-installing, self-healing with catchup timers. First version with automatic associative recall on every prompt.
+</div>
