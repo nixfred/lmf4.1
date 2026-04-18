@@ -1,5 +1,8 @@
 [Unit]
 Description=LMF4 memory extraction catchup (unprocessed sessions)
+# Runs ~/bin/memory-catchup which prefers `mem catchup` when mem is on PATH,
+# and falls back to `bun run ~/.claude/hooks/SessionExtract.hook.ts --batch`
+# for pre-v4.1 installs. Either path is idempotent.
 
 [Service]
 Type=oneshot
