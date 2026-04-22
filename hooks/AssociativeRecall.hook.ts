@@ -14,12 +14,14 @@
  */
 
 import { Database } from "bun:sqlite";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 
 const DB_PATH = join(process.env.HOME!, ".claude", "memory.db");
 const MIN_QUERY_LENGTH = 12; // Skip very short messages like "yes", "ok", "do it"
 const MAX_RESULTS = 5;
 const MAX_OUTPUT_CHARS = 1800;
+const PRIOR_MESSAGES_TO_INCLUDE = 2; // Read last N user messages for context blending
 // Noise floor: suppress recall results scoring below this. Tuned from live
 // diagnostic data — clearly-garbage matches cluster at 0.15–1.8; useful
 // matches at 2.5+. Showing weak matches adds cognitive tax and can mislead,
@@ -73,6 +75,49 @@ interface RecallResult {
   score: number;
 }
 
+// Read the last N user messages from this session's transcript JSONL.
+// Catches "did that work?" / "do your X" / "run it" type queries that
+// have no signal alone but rich signal when combined with prior turns.
+function getRecentUserMessages(sessionId: string | undefined, count: number): string[] {
+  if (!sessionId) return [];
+  try {
+    const cwd = process.cwd();
+    const encoded = "-" + cwd.replace(/^\/+/, "").replace(/\//g, "-");
+    const transcriptPath = join(process.env.HOME!, ".claude", "projects", encoded, `${sessionId}.jsonl`);
+    if (!existsSync(transcriptPath)) return [];
+
+    const raw = readFileSync(transcriptPath, "utf-8");
+    const lines = raw.split("\n");
+    const tail = lines.slice(-200); // last 200 lines is plenty for ~5 user turns
+    const userTexts: string[] = [];
+    for (let i = tail.length - 1; i >= 0 && userTexts.length < count; i--) {
+      const line = tail[i].trim();
+      if (!line) continue;
+      try {
+        const obj = JSON.parse(line);
+        const msg = obj?.message;
+        if (msg?.role !== "user") continue;
+        let text = "";
+        if (typeof msg.content === "string") {
+          text = msg.content;
+        } else if (Array.isArray(msg.content)) {
+          text = msg.content
+            .filter((b: any) => b && b.type === "text")
+            .map((b: any) => b.text || "")
+            .join(" ");
+        }
+        // Strip system-reminder blocks and very short ack-style messages
+        text = text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "").trim();
+        if (text.length < MIN_QUERY_LENGTH) continue;
+        userTexts.unshift(text); // chronological order
+      } catch { /* skip malformed line */ }
+    }
+    return userTexts;
+  } catch {
+    return []; // any failure → no prior context, hook still runs on current message alone
+  }
+}
+
 function extractKeyTerms(text: string): string[] {
   // Remove markdown, URLs, code blocks, paths
   const cleaned = text
@@ -84,12 +129,42 @@ function extractKeyTerms(text: string): string[] {
 
   const words = cleaned.split(/\s+/).filter((w) => w.length > 2);
   const terms = words.filter((w) => !STOP_WORDS.has(w));
-
-  // Deduplicate and take top terms (longer words are more likely to be specific)
   const unique = [...new Set(terms)];
-  unique.sort((a, b) => b.length - a.length);
 
-  return unique.slice(0, 6);
+  // Rank by rarity in the memory corpus (IDF proxy). Rarer tokens carry
+  // more topic signal than long-but-common ones. Length is a tiebreaker.
+  // Terms present in zero rows fall back to length — they may be proper
+  // nouns worth keeping even if they miss. DB probe cost: ~1ms per term,
+  // well inside the 300ms hook budget.
+  try {
+    const db = new Database(DB_PATH, { readonly: true });
+    const withScore = unique.map((term) => {
+      let hits = 0;
+      try {
+        const q = `"${term.replace(/"/g, "")}"`;
+        const r1 = db.prepare(`SELECT COUNT(*) AS c FROM loa_fts WHERE loa_fts MATCH ?`).get(q) as any;
+        const r2 = db.prepare(`SELECT COUNT(*) AS c FROM decisions_fts WHERE decisions_fts MATCH ?`).get(q) as any;
+        const r3 = db.prepare(`SELECT COUNT(*) AS c FROM learnings_fts WHERE learnings_fts MATCH ?`).get(q) as any;
+        const r4 = db.prepare(`SELECT COUNT(*) AS c FROM errors_fts WHERE errors_fts MATCH ?`).get(q) as any;
+        hits = (r1?.c ?? 0) + (r2?.c ?? 0) + (r3?.c ?? 0) + (r4?.c ?? 0);
+      } catch { /* unsearchable term → fall back to length */ }
+      return { term, hits, len: term.length };
+    });
+    db.close();
+    // Ascending hits (rare first); zero-hit → infinity so they rank last.
+    // Within equal rarity, longer wins.
+    withScore.sort((a, b) => {
+      const ah = a.hits === 0 ? 1e9 : a.hits;
+      const bh = b.hits === 0 ? 1e9 : b.hits;
+      if (ah !== bh) return ah - bh;
+      return b.len - a.len;
+    });
+    return withScore.slice(0, 6).map((w) => w.term);
+  } catch {
+    // DB unreachable — fall back to length sort
+    unique.sort((a, b) => b.length - a.length);
+    return unique.slice(0, 6);
+  }
 }
 
 function buildFtsQuery(terms: string[]): string {
@@ -241,18 +316,36 @@ async function main() {
   }
 
   const content = input.content || "";
+  const trimmed = content.trim();
 
-  // Skip short messages (greetings, confirmations, ratings)
-  if (content.length < MIN_QUERY_LENGTH) return;
+  // Skip pure numeric ratings — they have zero recall signal on their own
+  // AND zero recall signal when blended with prior context.
+  if (/^\d{1,2}$/.test(trimmed)) return;
 
-  // Skip if it looks like a rating or simple acknowledgment
-  if (/^\d{1,2}$/.test(content.trim())) return;
-  // Widened to cover more short-form acks and short-signal directives —
-  // recall on "do your X" / "run it" / "try that" is essentially searching
-  // on ~no signal and reliably returns noise. Silence beats noise here.
-  if (/^(yes|yep|yeah|no|nope|ok|okay|sure|thanks|thx|do it|do your|go|run it|try (it|that)|fix it|make it|apply|continue|proceed|right|correct|agreed?|ship it|lgtm|good|great|perfect)\b/i.test(content.trim())) return;
+  // Classify the current prompt. Short / ack / low-signal prompts get
+  // blended with prior user turns so recall anchors on the conversation
+  // topic, not on the single tiny current message.
+  const isShort = content.length < MIN_QUERY_LENGTH;
+  const isAck = /^(yes|yep|yeah|no|nope|ok|okay|sure|thanks|thx|do it|do your|go|run it|try (it|that)|fix it|make it|apply|continue|proceed|right|correct|agreed?|ship it|lgtm|good|great|perfect)\b/i.test(trimmed);
+  const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+  const looksLikeAck = wordCount <= 4 || extractKeyTerms(content).length < 3;
 
-  const terms = extractKeyTerms(content);
+  let queryText = content;
+  if (isShort || isAck || looksLikeAck) {
+    // Low-signal current turn — blend in prior context or skip entirely.
+    const prior = getRecentUserMessages(input.session_id, PRIOR_MESSAGES_TO_INCLUDE);
+    if (prior.length === 0) return; // no prior → preserve old skip behavior
+    queryText = prior.join(" ") + " " + content;
+  } else {
+    // Substantive turn — still blend the immediately-prior user turn so
+    // recall reflects the conversational arc, not just this one sentence.
+    const prior = getRecentUserMessages(input.session_id, 1);
+    if (prior.length > 0 && prior[0] !== content) {
+      queryText = prior[0] + " " + content;
+    }
+  }
+
+  const terms = extractKeyTerms(queryText);
   if (terms.length === 0) return;
 
   const results = searchMemory(terms);
