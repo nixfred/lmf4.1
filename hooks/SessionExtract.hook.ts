@@ -592,6 +592,24 @@ async function extractAndAppend(conversationPath: string, cwd: string): Promise<
 
 const DB_PATH = join(process.env.HOME!, '.claude', 'memory.db');
 
+// Reject values that are clearly extraction-template leaks — the LLM
+// returned the prompt's placeholder text instead of actual content.
+// These pollute the DB and can never be useful in recall. Returns the
+// original string if clean, or null if it's a placeholder to be rejected.
+// Conservative: only matches bracket-wrapped strings with known template
+// vocabulary. Real bracketed content (e.g. `[42]`, `[error code 137]`) passes.
+function rejectPlaceholder(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const t = value.trim();
+  if (!t || t.length < 2) return null;
+  if (/^\[.*\]$/.test(t)) {
+    if (/error\s*(message|pattern)|what\s+fixed|important\s+decision|description\s+of|no\s+specific|the\s+underlying\s+cause|your\s+(description|answer|response)|placeholder|fill\s+in|what\s+(happened|went\s+wrong)|missing\s+\w+\s+inputs|investigate\s+and\s+fix/i.test(t)) {
+      return null;
+    }
+  }
+  return value;
+}
+
 function writeToDb(extracted: string, project: string, date: string, sessionId: string, title: string): void {
   // Only write if DB exists (mem init has been run)
   if (!existsSync(DB_PATH)) return;
@@ -617,8 +635,9 @@ function writeToDb(extracted: string, project: string, date: string, sessionId: 
 
     for (const line of lines) {
       const parts = line.split(':');
-      const decision = parts[0].trim();
-      const reasoning = parts.length > 1 ? parts.slice(1).join(':').trim() : null;
+      const decision = rejectPlaceholder(parts[0].trim());
+      if (!decision) continue; // primary placeholder — no value in storing
+      const reasoning = parts.length > 1 ? rejectPlaceholder(parts.slice(1).join(':').trim()) : null;
 
       const r = db.prepare(
         `INSERT INTO decisions (created_at, session_id, project, decision, reasoning) VALUES (?, ?, ?, ?, ?)`
@@ -639,8 +658,11 @@ function writeToDb(extracted: string, project: string, date: string, sessionId: 
     for (const line of lines) {
       const colonIdx = line.indexOf(':');
       if (colonIdx > 0) {
-        const error = line.slice(0, colonIdx).trim();
-        const fix = line.slice(colonIdx + 1).trim();
+        const error = rejectPlaceholder(line.slice(0, colonIdx).trim());
+        if (!error) continue; // primary placeholder — skip
+        // Null out placeholder fixes so AssociativeRecall's `if (!r.fix)` skips
+        // the row during recall (the error pattern itself may still be useful).
+        const fix = rejectPlaceholder(line.slice(colonIdx + 1).trim());
 
         // Upsert: increment frequency if error exists, else insert
         const existing = db.prepare('SELECT id, frequency FROM errors WHERE error = ?').get(error) as any;
