@@ -58,7 +58,16 @@ else
     # bun installer requires unzip
     if ! command -v unzip &>/dev/null; then
         log "Installing unzip (required by bun)..."
-        sudo apt-get install -y -qq unzip 2>/dev/null || { err "Cannot install unzip. Install it manually: sudo apt-get install unzip"; exit 1; }
+        if command -v apt-get &>/dev/null; then
+            sudo apt-get install -y -qq unzip
+        elif command -v pacman &>/dev/null; then
+            sudo pacman -S --noconfirm --needed unzip
+        elif command -v dnf &>/dev/null; then
+            sudo dnf install -y unzip
+        else
+            err "Cannot install unzip automatically. Install it with your package manager and re-run."
+            exit 1
+        fi
     fi
     curl -fsSL https://bun.sh/install | bash
     if ! grep -q 'BUN_INSTALL' ~/.bashrc 2>/dev/null; then
@@ -220,8 +229,12 @@ if [ -d "$MEM_SRC/src" ]; then
     cp "$MEM_SRC/package.json" "$MEM_DEST/"
     cd "$MEM_DEST"
     bun install 2>/dev/null || true
-    bun build src/index.ts --outdir dist --target node 2>/dev/null
+    bun build src/index.ts --outdir dist --target bun 2>/dev/null
     if [ -f dist/index.js ]; then
+        # The CLI imports bun:sqlite — it MUST run under bun. A node shebang
+        # (from an older src or a --target node build) crashes with
+        # ERR_UNSUPPORTED_ESM_URL_SCHEME on every invocation.
+        sed -i '1s|^#!.*|#!/usr/bin/env bun|' dist/index.js
         chmod +x dist/index.js
         ln -sf "$MEM_DEST/dist/index.js" "$BIN_DIR/mem"
         ok "mem CLI → ~/bin/mem (v$(grep '"version"' "$MEM_SRC/package.json" | head -1 | cut -d'"' -f4))"
@@ -275,14 +288,6 @@ for (const [event, hookDef] of Object.entries(hookDefs)) {
   }
 }
 
-if (!s.mcpServers) s.mcpServers = {};
-if (!s.mcpServers['pai-memory']) {
-  s.mcpServers['pai-memory'] = {
-    type: 'stdio', command: 'bun',
-    args: ['run', process.env.HOME + '/.claude/hooks/mem-mcp-server.ts']
-  };
-}
-
 if (!s.env) s.env = {};
 s.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS = s.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS || '128000';
 s.autoMemoryDirectory = s.autoMemoryDirectory || process.env.HOME + '/.claude/MEMORY/AUTO';
@@ -290,7 +295,22 @@ s.autoMemoryDirectory = s.autoMemoryDirectory || process.env.HOME + '/.claude/ME
 fs.writeFileSync(path, JSON.stringify(s, null, 2) + '\n');
 console.log('OK');
 "
-ok "settings.json (hooks + MCP + env)"
+ok "settings.json (hooks + env)"
+
+# Register the MCP server where Claude Code actually reads it (~/.claude.json
+# user scope). settings.json `mcpServers` is NOT honored by Claude Code —
+# servers declared there never appear in `claude mcp list` and never load.
+if command -v claude &>/dev/null; then
+    if claude mcp list 2>/dev/null | grep -q 'pai-memory'; then
+        ok "MCP server pai-memory already registered"
+    elif claude mcp add -s user pai-memory bun -- run "$HOME/.claude/hooks/mem-mcp-server.ts" 2>/dev/null; then
+        ok "MCP server pai-memory registered (user scope)"
+    else
+        err "Could not register MCP server — run manually: claude mcp add -s user pai-memory bun -- run ~/.claude/hooks/mem-mcp-server.ts"
+    fi
+else
+    err "claude CLI not found — after installing, run: claude mcp add -s user pai-memory bun -- run ~/.claude/hooks/mem-mcp-server.ts"
+fi
 
 #######################################################################
 # 8. Helper scripts

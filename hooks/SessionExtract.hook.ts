@@ -312,7 +312,27 @@ function appendRejections(fabricOutput: string, sessionLabel: string, timestamp:
     .filter(l => l.length > 5);
   if (lines.length === 0) return;
 
-  const entries = lines.map(l => `${timestamp}|${sessionLabel}|${l.replace(/\|/g, '/')}`);
+  // Dedup against existing entries (same normalization as appendDecisions) —
+  // re-extractions otherwise stack identical rejections forever.
+  const normalize = (s: string) => s.toLowerCase().replace(/['"]/g, '').replace(/\s+/g, ' ').trim();
+  const existing = new Set<string>();
+  if (existsSync(REJECTIONS_PATH)) {
+    for (const line of readFileSync(REJECTIONS_PATH, 'utf-8').split('\n')) {
+      if (line.startsWith('#') || !line.trim()) continue;
+      const parts = line.split('|');
+      if (parts.length >= 3) existing.add(normalize(parts.slice(2).join('|')));
+    }
+  }
+
+  const entries: string[] = [];
+  for (const line of lines) {
+    if (!existing.has(normalize(line))) {
+      existing.add(normalize(line));
+      entries.push(`${timestamp}|${sessionLabel}|${line.replace(/\|/g, '/')}`);
+    }
+  }
+  if (entries.length === 0) return;
+
   appendFileSync(REJECTIONS_PATH, entries.join('\n') + '\n', 'utf-8');
   console.error(`[SessionExtract] Appended ${entries.length} rejections`);
 }
@@ -537,9 +557,11 @@ async function extractAndAppend(conversationPath: string, cwd: string): Promise<
     const sessionId = conversationPath.split('/').pop()?.replace('.jsonl', '') || 'unknown';
 
     // Write to SQLite database (primary storage)
+    // Full ISO timestamp — date-only values flatten AssociativeRecall's
+    // recency decay and make same-day ordering impossible.
     const summaryMatch = extracted.match(/##\s*ONE\s*SENTENCE\s*SUMMARY\s*\n+(.+)/);
     try {
-      writeToDb(extracted, dirName, timestamp, sessionId, summaryMatch ? summaryMatch[1].trim() : `${dirName} session`);
+      writeToDb(extracted, dirName, new Date().toISOString(), sessionId, summaryMatch ? summaryMatch[1].trim() : `${dirName} session`);
     } catch (dbErr: any) {
       console.error(`[SessionExtract] DB write failed: ${dbErr.message}`);
     }
@@ -617,6 +639,12 @@ function writeToDb(extracted: string, project: string, date: string, sessionId: 
   const { Database } = require('bun:sqlite');
   const db = new Database(DB_PATH);
   db.run('PRAGMA journal_mode=WAL');
+
+  // Re-extraction (REGROWTH, --force, --reextract) must replace this
+  // session's rows, not stack duplicates on top of them. The FTS delete
+  // triggers keep the indexes in sync.
+  db.prepare('DELETE FROM loa_entries WHERE session_id = ?').run(sessionId);
+  db.prepare('DELETE FROM decisions WHERE session_id = ?').run(sessionId);
 
   // 1. Insert LoA entry
   const loaResult = db.prepare(
@@ -814,7 +842,12 @@ async function main() {
     try { hookInput = JSON.parse(input); } catch { process.exit(0); }
 
     const cwd = hookInput.cwd || process.cwd();
-    const conversationPath = findCurrentConversation(cwd);
+    // Prefer the exact transcript the harness names — newest-mtime fallback
+    // can grab the WRONG session when two sessions run in the same cwd.
+    const conversationPath =
+      (hookInput.transcript_path && existsSync(hookInput.transcript_path))
+        ? hookInput.transcript_path
+        : findCurrentConversation(cwd);
     if (!conversationPath) {
       logExtract(`NO_CONVERSATION: ${cwd}`);
       process.exit(0);

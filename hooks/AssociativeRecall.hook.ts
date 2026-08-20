@@ -64,8 +64,13 @@ const STOP_WORDS = new Set([
 ]);
 
 interface UserPromptInput {
+  // Claude Code's UserPromptSubmit payload carries the text in `prompt`.
+  // `content` is kept for manual testing / older harness versions.
+  prompt?: string;
   content?: string;
   session_id?: string;
+  transcript_path?: string;
+  cwd?: string;
 }
 
 interface RecallResult {
@@ -78,12 +83,17 @@ interface RecallResult {
 // Read the last N user messages from this session's transcript JSONL.
 // Catches "did that work?" / "do your X" / "run it" type queries that
 // have no signal alone but rich signal when combined with prior turns.
-function getRecentUserMessages(sessionId: string | undefined, count: number): string[] {
-  if (!sessionId) return [];
+function getRecentUserMessages(sessionId: string | undefined, count: number, knownTranscriptPath?: string): string[] {
+  if (!sessionId && !knownTranscriptPath) return [];
   try {
-    const cwd = process.cwd();
-    const encoded = "-" + cwd.replace(/^\/+/, "").replace(/\//g, "-");
-    const transcriptPath = join(process.env.HOME!, ".claude", "projects", encoded, `${sessionId}.jsonl`);
+    // Prefer the transcript_path the harness hands us — the fallback path
+    // reconstruction is lossy (Claude Code encodes both "/" and "_" as "-").
+    let transcriptPath = knownTranscriptPath || "";
+    if (!transcriptPath || !existsSync(transcriptPath)) {
+      const cwd = process.cwd();
+      const encoded = "-" + cwd.replace(/^\/+/, "").replace(/[\/_]/g, "-");
+      transcriptPath = join(process.env.HOME!, ".claude", "projects", encoded, `${sessionId}.jsonl`);
+    }
     if (!existsSync(transcriptPath)) return [];
 
     const raw = readFileSync(transcriptPath, "utf-8");
@@ -315,7 +325,7 @@ async function main() {
     return; // No input — skip
   }
 
-  const content = input.content || "";
+  const content = input.prompt || input.content || "";
   const trimmed = content.trim();
 
   // Skip pure numeric ratings — they have zero recall signal on their own
@@ -333,13 +343,13 @@ async function main() {
   let queryText = content;
   if (isShort || isAck || looksLikeAck) {
     // Low-signal current turn — blend in prior context or skip entirely.
-    const prior = getRecentUserMessages(input.session_id, PRIOR_MESSAGES_TO_INCLUDE);
+    const prior = getRecentUserMessages(input.session_id, PRIOR_MESSAGES_TO_INCLUDE, input.transcript_path);
     if (prior.length === 0) return; // no prior → preserve old skip behavior
     queryText = prior.join(" ") + " " + content;
   } else {
     // Substantive turn — still blend the immediately-prior user turn so
     // recall reflects the conversational arc, not just this one sentence.
-    const prior = getRecentUserMessages(input.session_id, 1);
+    const prior = getRecentUserMessages(input.session_id, 1, input.transcript_path);
     if (prior.length > 0 && prior[0] !== content) {
       queryText = prior[0] + " " + content;
     }

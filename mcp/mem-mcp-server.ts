@@ -15,7 +15,8 @@
 import { Database } from "bun:sqlite";
 import { join } from "path";
 
-const DB_PATH = join(process.env.HOME!, ".claude", "memory.db");
+// MEM_DB_PATH override matches the mem CLI — used by tests and multi-db setups
+const DB_PATH = process.env.MEM_DB_PATH || join(process.env.HOME!, ".claude", "memory.db");
 
 // ─── MCP Protocol Types ───────────────────────────────────────────
 
@@ -42,6 +43,23 @@ function getDb(): Database {
 function searchMemory(query: string, limit: number = 15): any[] {
   const db = getDb();
   const results: any[] = [];
+
+  // Validate the user-supplied FTS5 query up front. Invalid syntax (stray
+  // quotes, unbalanced parens, leading operators) used to throw inside every
+  // per-table try/catch and silently return "No results" — misleading. Fall
+  // back to treating the whole query as one quoted phrase-free term list.
+  try {
+    // COUNT(*) forces the MATCH to actually evaluate — `LIMIT 0` would let
+    // sqlite short-circuit before parsing the FTS expression.
+    db.prepare(`SELECT COUNT(*) FROM loa_fts WHERE loa_fts MATCH ?`).get(query);
+  } catch {
+    query = query
+      .replace(/["'()]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((t) => `"${t}"`)
+      .join(" OR ") || '""';
+  }
 
   // Search LoA entries (session extractions)
   try {
@@ -185,6 +203,9 @@ function handleRequest(req: JsonRpcRequest): JsonRpcResponse {
       // No response needed for notifications
       return null as any;
 
+    case "ping":
+      return { jsonrpc: "2.0", id: req.id ?? null, result: {} };
+
     case "tools/list":
       return { jsonrpc: "2.0", id: req.id ?? null, result: { tools: TOOLS } };
 
@@ -239,6 +260,11 @@ function handleRequest(req: JsonRpcRequest): JsonRpcResponse {
     }
 
     default:
+      // JSON-RPC: notifications (no id) must never receive a response —
+      // answering them with errors confuses strict MCP clients.
+      if (req.method.startsWith("notifications/") || req.id === undefined) {
+        return null as any;
+      }
       return {
         jsonrpc: "2.0",
         id: req.id ?? null,

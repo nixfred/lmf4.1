@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 // LMF - Persistent AI Memory System
 // CLI entry point
