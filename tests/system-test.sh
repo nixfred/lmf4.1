@@ -30,52 +30,37 @@ else
 fi
 
 # ─── DB schema / FTS triggers ────────────────────────────
+# All DB tests run against an ISOLATED temp database (via MEM_DB_PATH),
+# never the real ~/.claude/memory.db. Earlier versions inserted junk rows
+# into the production DB and demanded exactly-1 FTS matches, so the suite
+# both polluted real memory and failed on every re-run.
 echo ""
 echo "=== DB TESTS ==="
 
-echo ""
-echo "--- TEST 1: FTS trigger fires on decision insert ---"
-bun -e '
-const db = new (require("bun:sqlite").Database)(process.env.HOME + "/.claude/memory.db");
-db.prepare("INSERT INTO decisions (decision, reasoning) VALUES (?, ?)").run("test decision alpha", "test reasoning beta");
-const fts = db.prepare("SELECT * FROM decisions_fts WHERE decisions_fts MATCH ?").all("alpha");
-db.close();
-if (fts.length === 1) { console.log("OK"); process.exit(0); }
-else { console.log("FAIL: expected 1, got " + fts.length); process.exit(1); }
-' >/dev/null && pass "decisions FTS trigger" || fail "decisions FTS trigger"
+TEST_DB="$(mktemp -d)/lmf4-test.db"
+trap 'rm -rf "$(dirname "$TEST_DB")"' EXIT
+if MEM_DB_PATH="$TEST_DB" "$HOME/bin/mem" init >/dev/null 2>&1 && [ -f "$TEST_DB" ]; then
+    pass "temp test DB created via mem init"
+else
+    fail "could not create temp test DB (mem init)"
+fi
 
-echo ""
-echo "--- TEST 2: FTS trigger fires on loa_entries insert ---"
-bun -e '
-const db = new (require("bun:sqlite").Database)(process.env.HOME + "/.claude/memory.db");
-db.prepare("INSERT INTO loa_entries (title, fabric_extract) VALUES (?, ?)").run("test session gamma", "extracted content delta");
-const fts = db.prepare("SELECT * FROM loa_fts WHERE loa_fts MATCH ?").all("gamma");
+fts_trigger_test() {  # $1 label, $2 table, $3 cols, $4 values-js, $5 fts, $6 term
+    echo ""
+    echo "--- TEST: FTS trigger fires on $2 insert ---"
+    TEST_DB="$TEST_DB" bun -e "
+const db = new (require('bun:sqlite').Database)(process.env.TEST_DB);
+db.prepare(\"INSERT INTO $2 ($3) VALUES ($4)\").run();
+const fts = db.prepare(\"SELECT * FROM $5 WHERE $5 MATCH ?\").all('$6');
 db.close();
-if (fts.length === 1) { console.log("OK"); process.exit(0); }
-else { console.log("FAIL: got " + fts.length); process.exit(1); }
-' >/dev/null && pass "loa_entries FTS trigger" || fail "loa_entries FTS trigger"
+process.exit(fts.length === 1 ? 0 : 1);
+" >/dev/null 2>&1 && pass "$2 FTS trigger" || fail "$2 FTS trigger"
+}
 
-echo ""
-echo "--- TEST 3: FTS trigger fires on errors insert ---"
-bun -e '
-const db = new (require("bun:sqlite").Database)(process.env.HOME + "/.claude/memory.db");
-db.prepare("INSERT INTO errors (error, fix) VALUES (?, ?)").run("test error epsilon", "test fix zeta");
-const fts = db.prepare("SELECT * FROM errors_fts WHERE errors_fts MATCH ?").all("epsilon");
-db.close();
-if (fts.length === 1) { console.log("OK"); process.exit(0); }
-else { console.log("FAIL: got " + fts.length); process.exit(1); }
-' >/dev/null && pass "errors FTS trigger" || fail "errors FTS trigger"
-
-echo ""
-echo "--- TEST 4: FTS trigger fires on learnings insert ---"
-bun -e '
-const db = new (require("bun:sqlite").Database)(process.env.HOME + "/.claude/memory.db");
-db.prepare("INSERT INTO learnings (problem, solution) VALUES (?, ?)").run("test problem eta", "test solution theta");
-const fts = db.prepare("SELECT * FROM learnings_fts WHERE learnings_fts MATCH ?").all("eta");
-db.close();
-if (fts.length === 1) { console.log("OK"); process.exit(0); }
-else { console.log("FAIL: got " + fts.length); process.exit(1); }
-' >/dev/null && pass "learnings FTS trigger" || fail "learnings FTS trigger"
+fts_trigger_test 1 decisions "decision, reasoning" "'test decision alpha', 'test reasoning beta'" decisions_fts alpha
+fts_trigger_test 2 loa_entries "title, fabric_extract" "'test session gamma', 'extracted content delta'" loa_fts gamma
+fts_trigger_test 3 errors "error, fix" "'test error epsilon', 'test fix zeta'" errors_fts epsilon
+fts_trigger_test 4 learnings "problem, solution" "'test problem eta', 'test solution theta'" learnings_fts eta
 
 # ─── mem CLI subcommands ──────────────────────────────────
 echo ""
@@ -98,7 +83,7 @@ done
 
 echo ""
 echo "--- TEST mem search finds FTS data ---"
-RESULT=$("$HOME/bin/mem" search "alpha" 2>&1 || true)
+RESULT=$(MEM_DB_PATH="$TEST_DB" "$HOME/bin/mem" search "alpha" 2>&1 || true)
 if echo "$RESULT" | grep -qi "alpha"; then
     pass "mem search returns FTS results"
 else
@@ -107,7 +92,7 @@ fi
 
 echo ""
 echo "--- TEST mem stats runs and shows counts ---"
-if "$HOME/bin/mem" stats 2>&1 | grep -qE "sessions|messages|decisions"; then
+if "$HOME/bin/mem" stats 2>&1 | grep -qiE "sessions|messages|decisions"; then
     pass "mem stats"
 else
     fail "mem stats missing expected output"
@@ -127,7 +112,7 @@ echo "=== MCP TESTS ==="
 
 echo ""
 echo "--- TEST MCP memory_search returns results ---"
-MCP_SEARCH=$(printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"memory_search","arguments":{"query":"alpha"}}}\n' | timeout 5 bun run "$HOME/.claude/hooks/mem-mcp-server.ts" 2>/dev/null | tail -1)
+MCP_SEARCH=$(printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"memory_search","arguments":{"query":"alpha"}}}\n' | MEM_DB_PATH="$TEST_DB" timeout 5 bun run "$HOME/.claude/hooks/mem-mcp-server.ts" 2>/dev/null | tail -1)
 if echo "$MCP_SEARCH" | grep -q "alpha"; then
     pass "MCP memory_search"
 else
@@ -136,7 +121,7 @@ fi
 
 echo ""
 echo "--- TEST MCP memory_recall returns recent ---"
-MCP_RECALL=$(printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"memory_recall","arguments":{"count":3}}}\n' | timeout 5 bun run "$HOME/.claude/hooks/mem-mcp-server.ts" 2>/dev/null | tail -1)
+MCP_RECALL=$(printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"memory_recall","arguments":{"count":3}}}\n' | MEM_DB_PATH="$TEST_DB" timeout 5 bun run "$HOME/.claude/hooks/mem-mcp-server.ts" 2>/dev/null | tail -1)
 if echo "$MCP_RECALL" | grep -q "gamma"; then
     pass "MCP memory_recall"
 else

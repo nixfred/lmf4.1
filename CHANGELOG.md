@@ -2,6 +2,23 @@
 
 All notable changes to LMF4 (the persistent-memory system for Claude Code).
 
+## [4.1.1] — 2026-08-20
+
+Field-test release: bugs found running 4.1.0 on a real machine (fresh Omarchy/Arch install with an existing 40MB memory.db). Four of these were silent total failures — the component never worked and nothing said so.
+
+### Fixed
+
+- **mem CLI crashed on every invocation.** `install` built with `--target node`, keeping the `#!/usr/bin/env node` shebang — but the CLI imports `bun:sqlite`, which node cannot load (`ERR_UNSUPPORTED_ESM_URL_SCHEME`). Now builds `--target bun` and forces a bun shebang.
+- **MCP server never loaded.** It was registered under `mcpServers` in `settings.json`, which Claude Code does not read (verify: `claude mcp list` never showed it). Install now registers via `claude mcp add -s user pai-memory`.
+- **AssociativeRecall never saw the user's prompt.** It read `input.content`, but Claude Code's UserPromptSubmit payload carries the text in `prompt`. Every real message looked empty → treated as an ack → recall silently skipped. Now reads `prompt` (with `content` fallback), and uses the payload's `transcript_path` instead of a lossy cwd→path reconstruction (`_` and `/` both encode to `-`).
+- **StopFailure and SessionExtract clobbered each other's ERROR_PATTERNS.json.** One wrote a bare array, the other `{patterns:[]}` — whichever ran second either wiped the file's shape or silently failed to log. StopFailure now uses the shared `{patterns:[]}` shape and migrates legacy array files.
+- **SessionExtract could extract the wrong session.** It ignored the hook payload's `transcript_path` and picked the newest `.jsonl` by mtime — wrong under concurrent sessions in one cwd. Payload path now wins.
+- **Re-extraction duplicated DB rows.** REGROWTH/`--force`/`--reextract` inserted new `loa_entries`/`decisions` rows without removing the old ones. Now deletes that session's rows first (FTS triggers keep indexes in sync).
+- **DB timestamps were date-only**, flattening AssociativeRecall's recency decay and same-day ordering. Now full ISO.
+- **REJECTIONS.log had no dedup** (decisions did) — re-extractions stacked identical lines forever. Same normalize-and-skip logic as decisions now.
+- **MCP: invalid FTS5 syntax returned a misleading "No results".** Queries are probe-validated; on syntax error the query degrades to OR-joined quoted terms. Also: `ping` support, and notifications no longer receive error responses (JSON-RPC violation).
+- **Install was Debian-only** (`apt-get` hardcoded for unzip). Now detects apt-get/pacman/dnf.
+
 ## [4.1.0] — 2026-04-18
 
 The "standalone" release. LMF4.1 no longer requires PAI, Fabric, Go, or any local LLM. It's a single-repo install for persistent memory in Claude Code, and nothing else.
