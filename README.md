@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/readme/lmf4-hero.png" alt="Conversation fragments flowing through a layered local memory vault and returning as context in a new coding session" width="100%">
+
 # 🧠 LMF4.1
 
 ### Persistent memory for Claude Code — your AI actually remembers.
@@ -54,6 +56,8 @@ Your AI gets smarter every day. You stop repeating yourself. Forever.
 <br>
 
 ## 🔄 How memory flows
+
+<img src="assets/readme/recall-loop.svg" alt="Session loop from user message through associative recall and contextual work to structured memory extraction" width="100%">
 
 ```mermaid
 flowchart LR
@@ -296,6 +300,8 @@ See [docs/for-the-human/07-multi-host.md](docs/for-the-human/07-multi-host.md) f
 ## 🛡️ Safety and privacy
 
 **Your data never leaves your machines and your GitHub.**
+
+<img src="assets/readme/privacy-boundary.svg" alt="Privacy boundary containing local SQLite, transcripts, memory library, and private GitHub backup while excluding telemetry, analytics, and memory SaaS" width="100%">
 
 | Surface | What's there | Default |
 |---|---|:---:|
