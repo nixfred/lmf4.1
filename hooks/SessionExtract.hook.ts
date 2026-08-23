@@ -35,6 +35,10 @@ import { existsSync, readFileSync, appendFileSync, writeFileSync, readdirSync, s
 import { join } from 'path';
 import { execSync, spawn } from 'child_process';
 
+// Never run inside a headless claude child. The extraction subprocess must not
+// trigger another SessionExtract hook and recursively spawn more children.
+if (process.env.LMF4_HEADLESS) process.exit(0);
+
 const MEMORY_DIR = join(process.env.HOME!, '.claude', 'MEMORY');
 const EXTRACT_LOG = join(MEMORY_DIR, 'EXTRACT_LOG.txt');
 const DISTILLED_PATH = join(MEMORY_DIR, 'DISTILLED.md');
@@ -442,9 +446,12 @@ async function extractWithClaude(messages: string): Promise<string | null> {
     const env = { ...process.env };
     delete env.ANTHROPIC_API_KEY;
     delete env.CLAUDECODE;
+    // Belt and suspenders: disable child hooks and make this hook exit if the
+    // child ever inherits or reloads user settings unexpectedly.
+    env.LMF4_HEADLESS = '1';
 
     const result = execSync(
-      `claude --print --model ${EXTRACT_MODEL} --output-format text`,
+      `claude --print --model ${EXTRACT_MODEL} --output-format text --setting-sources ''`,
       {
         input: stdinPayload,
         encoding: 'utf-8',
@@ -524,6 +531,9 @@ async function extractAndAppend(conversationPath: string, cwd: string): Promise<
     const messages = extractMessages(conversationPath);
     if (messages.length < 500) {
       console.error('[SessionExtract] Conversation too short, skipping');
+      // Short transcripts are a terminal, successful outcome. Track them so
+      // every catch-up run does not revisit them and sleep for five seconds.
+      markAsExtracted(conversationPath);
       return;
     }
 
