@@ -762,6 +762,8 @@ if (process.argv.includes('--batch')) {
 
   (async () => {
     let processed = 0, skipped = 0, failed = 0;
+    let extractionRequests = 0;
+    const maxExtractionRequests = Math.max(1, Number.parseInt(process.env.LMF4_CATCHUP_MAX_REQUESTS || '15', 10) || 15);
     for (const conv of allConvs) {
       if (force) {
         // Clear tracker for this file
@@ -784,6 +786,12 @@ if (process.argv.includes('--batch')) {
         // Rate-limit only actual Claude requests. Local terminal outcomes such
         // as short transcripts can be classified without an artificial delay.
         if (requestedExtraction && processed + failed < allConvs.length - skipped) {
+          extractionRequests++;
+          if (extractionRequests >= maxExtractionRequests) {
+            console.error(`[SessionExtract] BATCH: Request limit reached (${maxExtractionRequests}); remaining work deferred`);
+            logExtract(`BATCH: Request limit reached (${maxExtractionRequests}); remaining work deferred`);
+            break;
+          }
           await new Promise(r => setTimeout(r, 5000));
         }
       } catch {
