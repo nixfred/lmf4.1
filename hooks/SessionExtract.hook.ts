@@ -519,13 +519,14 @@ async function extractChunked(messages: string): Promise<string | null> {
 
 // ─── Main extraction pipeline ──────────────────────────────────────
 
-async function extractAndAppend(conversationPath: string, cwd: string): Promise<void> {
+async function extractAndAppend(conversationPath: string, cwd: string): Promise<boolean> {
+  let requestedExtraction = false;
   try {
     ensureMemoryDirs();
 
     if (wasAlreadyExtracted(conversationPath)) {
       console.error('[SessionExtract] Already extracted, skipping');
-      return;
+      return false;
     }
 
     const messages = extractMessages(conversationPath);
@@ -534,10 +535,11 @@ async function extractAndAppend(conversationPath: string, cwd: string): Promise<
       // Short transcripts are a terminal, successful outcome. Track them so
       // every catch-up run does not revisit them and sleep for five seconds.
       markAsExtracted(conversationPath);
-      return;
+      return false;
     }
 
     let extracted: string = "";
+    requestedExtraction = true;
 
     if (messages.length > 60000) {
       const chunkedResult = await extractChunked(messages);
@@ -551,7 +553,7 @@ async function extractAndAppend(conversationPath: string, cwd: string): Promise<
       console.error("[SessionExtract] Extraction failed");
       logExtract("FAILURE: Extraction failed");
       markAsFailed(conversationPath);
-      return;
+      return true;
     }
 
     // Quality gate
@@ -559,7 +561,7 @@ async function extractAndAppend(conversationPath: string, cwd: string): Promise<
       console.error("[SessionExtract] QUALITY GATE FAILED");
       logExtract("QUALITY GATE FAILED");
       markAsFailed(conversationPath);
-      return;
+      return true;
     }
 
     const timestamp = new Date().toISOString().split('T')[0];
@@ -613,10 +615,12 @@ async function extractAndAppend(conversationPath: string, cwd: string): Promise<
 
     logExtract(`SUCCESS: All memory files updated for session=${dirName}`);
     console.error(`[SessionExtract] All memory files + DB updated`);
+    return true;
 
   } catch (error: any) {
     console.error(`[SessionExtract] Extraction failed: ${error.message}`);
     logExtract(`FAILURE: ${error.message}`);
+    return requestedExtraction;
   }
 }
 
@@ -775,15 +779,15 @@ if (process.argv.includes('--batch')) {
 
       console.error(`[SessionExtract] BATCH: Processing ${conv.path.split('/').pop()} (${processed + 1})`);
       try {
-        await extractAndAppend(conv.path, conv.cwd);
+        const requestedExtraction = await extractAndAppend(conv.path, conv.cwd);
         processed++;
+        // Rate-limit only actual Claude requests. Local terminal outcomes such
+        // as short transcripts can be classified without an artificial delay.
+        if (requestedExtraction && processed + failed < allConvs.length - skipped) {
+          await new Promise(r => setTimeout(r, 5000));
+        }
       } catch {
         failed++;
-      }
-
-      // Rate limit: 5 second pause between extractions
-      if (processed + failed < allConvs.length - skipped) {
-        await new Promise(r => setTimeout(r, 5000));
       }
     }
 
