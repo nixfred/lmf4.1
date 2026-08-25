@@ -9,7 +9,14 @@
  * Input: { content: string } — the user's message
  * Output: stdout system-reminder with relevant past context (or empty)
  *
- * Performance budget: <300ms total. Uses FTS5 only (no embedding at query time).
+ * Performance budget: <300ms total.
+ *   Tier 1: FTS5 keyword match (rare-term weighted).
+ *   Tier 2 (added 2026-08-24): semantic — embed the query with local
+ *   nomic-embed-text (Ollama, ~20-40ms warm) and cosine-scan the ~6k vectors
+ *   in memory.db (~80ms). Fused with FTS via Reciprocal Rank Fusion so a
+ *   prompt like "health check on your memory system" recalls memory-system
+ *   work instead of whatever happens to contain the token "memory".
+ *   Semantic tier is best-effort: Ollama down / slow (>1.5s) → FTS only.
  * Token budget: <2000 chars injected per message.
  */
 
@@ -28,6 +35,12 @@ const PRIOR_MESSAGES_TO_INCLUDE = 2; // Read last N user messages for context bl
 // so silence is better than noise. Raise for stricter recall, lower for
 // broader; 2.0 is the conservative default.
 const MIN_SCORE = 2.0;
+const OLLAMA_URL = "http://localhost:11434";
+const EMBED_MODEL = "nomic-embed-text";
+const SEMANTIC_TIMEOUT_MS = 2500; // nomic cold-load ≈1.5s when llama evicted it (MAX_LOADED_MODELS=1)
+const SEMANTIC_MIN_SIM = 0.55; // nomic cosine: unrelated ~0.3-0.45, related ~0.6+
+const SEMANTIC_TOP_K = 8;
+const RRF_K = 60;
 
 // Words that are too common to search for
 const STOP_WORDS = new Set([
@@ -299,6 +312,110 @@ function searchMemory(terms: string[]): RecallResult[] {
   return results.filter((r) => r.score >= MIN_SCORE).slice(0, MAX_RESULTS);
 }
 
+// ─── Tier 2: semantic recall ─────────────────────────────────────
+
+async function embedQuery(text: string): Promise<Float32Array | null> {
+  try {
+    const res = await fetch(`${OLLAMA_URL}/api/embeddings`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: EMBED_MODEL, prompt: text.slice(0, 4000), keep_alive: "2h" }),
+      signal: AbortSignal.timeout(SEMANTIC_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { embedding?: number[] };
+    if (!data.embedding || data.embedding.length === 0) return null;
+    const q = Float32Array.from(data.embedding);
+    let n = 0;
+    for (let i = 0; i < q.length; i++) n += q[i] * q[i];
+    n = Math.sqrt(n) || 1;
+    for (let i = 0; i < q.length; i++) q[i] /= n;
+    return q;
+  } catch {
+    return null; // Ollama down/slow → FTS-only, never block the prompt
+  }
+}
+
+async function semanticSearch(queryText: string): Promise<RecallResult[]> {
+  const q = await embedQuery(queryText);
+  if (!q) return [];
+
+  const db = new Database(DB_PATH, { readonly: true });
+  const out: RecallResult[] = [];
+  try {
+    const rows = db
+      .prepare(
+        `SELECT source_table, source_id, embedding FROM embeddings
+         WHERE source_table IN ('loa_entries','decisions','learnings','errors')`
+      )
+      .all() as any[];
+
+    const scored: { table: string; id: number; sim: number }[] = [];
+    for (const r of rows) {
+      const b = r.embedding as Uint8Array;
+      if (!b || b.byteLength !== q.length * 4) continue;
+      const v = new Float32Array(b.buffer, b.byteOffset, q.length);
+      let dot = 0, norm = 0;
+      for (let i = 0; i < q.length; i++) { dot += v[i] * q[i]; norm += v[i] * v[i]; }
+      const sim = norm > 0 ? dot / Math.sqrt(norm) : 0;
+      if (sim >= SEMANTIC_MIN_SIM) scored.push({ table: r.source_table, id: r.source_id, sim });
+    }
+    scored.sort((a, b) => b.sim - a.sim);
+
+    // Fetch a few extra so recency re-ranking has room, then re-sort below.
+    for (const h of scored.slice(0, SEMANTIC_TOP_K * 2)) {
+      try {
+        let row: any; let type = ""; let text = "";
+        switch (h.table) {
+          case "decisions":
+            row = db.prepare(`SELECT decision, reasoning, created_at FROM decisions WHERE id = ? AND status = 'active'`).get(h.id);
+            if (!row) continue;
+            type = "decision"; text = row.reasoning ? `${row.decision} — ${row.reasoning}` : row.decision; break;
+          case "errors":
+            row = db.prepare(`SELECT error, fix, created_at FROM errors WHERE id = ?`).get(h.id);
+            if (!row?.fix) continue;
+            type = "error/fix"; text = `${row.error} → ${row.fix}`; break;
+          case "learnings":
+            row = db.prepare(`SELECT problem, solution, created_at FROM learnings WHERE id = ?`).get(h.id);
+            if (!row?.solution) continue;
+            type = "learning"; text = `${row.problem} → ${row.solution}`; break;
+          default:
+            row = db.prepare(`SELECT title, created_at FROM loa_entries WHERE id = ?`).get(h.id);
+            if (!row) continue;
+            type = "past session"; text = row.title;
+        }
+        // Gentle recency weighting: a 6-month-old hit needs ~0.05 more
+        // similarity to beat a fresh one. Keeps old-but-exact matches alive.
+        const ageDays = (Date.now() - new Date(row.created_at).getTime()) / 86400000;
+        const recency = 0.85 + 0.15 * Math.pow(0.99, Math.max(0, ageDays));
+        out.push({ type, text, date: row.created_at?.slice(0, 10) || "", score: h.sim * recency });
+      } catch { /* skip row */ }
+    }
+  } catch { /* semantic tier is best-effort */ }
+  db.close();
+  out.sort((a, b) => b.score - a.score);
+  return out.slice(0, SEMANTIC_TOP_K);
+}
+
+// Reciprocal Rank Fusion: each list contributes 1/(k+rank). Items found by
+// BOTH tiers float to the top; singletons keep their tier's ordering.
+function fuseResults(fts: RecallResult[], sem: RecallResult[]): RecallResult[] {
+  const key = (r: RecallResult) => `${r.type}|${r.text.slice(0, 120)}`;
+  const merged = new Map<string, RecallResult>();
+  const add = (list: RecallResult[], weight: number) => {
+    list.forEach((r, i) => {
+      const k = key(r);
+      const contrib = weight / (RRF_K + i + 1);
+      const prev = merged.get(k);
+      if (prev) prev.score += contrib;
+      else merged.set(k, { ...r, score: contrib });
+    });
+  };
+  add(fts, 1.0);
+  add(sem, 1.0);
+  return [...merged.values()].sort((a, b) => b.score - a.score).slice(0, MAX_RESULTS);
+}
+
 function formatResults(results: RecallResult[]): string {
   if (results.length === 0) return "";
 
@@ -342,10 +459,13 @@ async function main() {
 
   let queryText = content;
   if (isShort || isAck || looksLikeAck) {
-    // Low-signal current turn — blend in prior context or skip entirely.
+    // Low-signal current turn — blend in prior context. Only skip outright
+    // when the turn is a true ack/short with nothing prior; a short but
+    // specific question ("who is Chappy and what is the DDN thing" → 2 key
+    // terms) must still reach the semantic tier, which needs no key terms.
     const prior = getRecentUserMessages(input.session_id, PRIOR_MESSAGES_TO_INCLUDE, input.transcript_path);
-    if (prior.length === 0) return; // no prior → preserve old skip behavior
-    queryText = prior.join(" ") + " " + content;
+    if (prior.length === 0 && (isShort || isAck || wordCount <= 4)) return;
+    queryText = prior.length > 0 ? prior.join(" ") + " " + content : content;
   } else {
     // Substantive turn — still blend the immediately-prior user turn so
     // recall reflects the conversational arc, not just this one sentence.
@@ -356,9 +476,13 @@ async function main() {
   }
 
   const terms = extractKeyTerms(queryText);
-  if (terms.length === 0) return;
 
-  const results = searchMemory(terms);
+  // Run both tiers concurrently; semantic is best-effort and time-boxed.
+  const [fts, sem] = await Promise.all([
+    Promise.resolve(terms.length > 0 ? searchMemory(terms) : []),
+    semanticSearch(queryText),
+  ]);
+  const results = fuseResults(fts, sem);
   if (results.length === 0) return;
 
   const formatted = formatResults(results);

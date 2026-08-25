@@ -2,6 +2,12 @@
 
 All notable changes to LMF4 (the persistent-memory system for Claude Code).
 
+## 4.1.2 — 2026-08-24
+
+- **mem-cli:** `blobToEmbedding` decodes via `DataView` (no per-row `Buffer.from` copy; safe for the `Uint8Array` blobs bun:sqlite returns).
+- **hooks/SessionExtract:** extraction backend selectable via `LMF4_EXTRACT_MODEL`; `ollama:<model>` runs on local Ollama (default `ollama:llama3.1:8b`, zero Claude credits). Skips extraction-child transcripts (`claude --print` sessions), gives up after 2 failed attempts instead of retrying forever, drops "None…/N/A" pseudo-decisions at insert.
+- **hooks/AssociativeRecall:** Tier 2 semantic recall — query embedded with local `nomic-embed-text`, cosine over all `embeddings` rows, RRF-fused with FTS5, gentle recency decay. Short-but-specific prompts no longer skip recall. Ollama down → FTS-only fallback.
+
 ## [4.1.1] — 2026-08-20
 
 Field-test release: bugs found running 4.1.0 on a real machine (fresh Omarchy/Arch install with an existing 40MB memory.db). Four of these were silent total failures — the component never worked and nothing said so.

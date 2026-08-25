@@ -53,10 +53,14 @@ const DEDUP_DB_PATH = join(MEMORY_DIR, '.extraction_tracker.json');
 const HOT_RECALL_MAX_SESSIONS = 10;
 const EXTRACT_PROMPT_PATH = join(MEMORY_DIR, 'extract_prompt.md');
 
-// Extraction runs via `claude --print --model claude-haiku-4-5`.
-// Uses the Claude Code subscription (not API credits).
-// Override via LMF4_EXTRACT_MODEL env var if you want a different model.
-const EXTRACT_MODEL = process.env.LMF4_EXTRACT_MODEL || 'claude-haiku-4-5';
+// Extraction backend is chosen by LMF4_EXTRACT_MODEL:
+//   'ollama:<model>'  -> local Ollama at localhost:11434 (zero Claude credits)
+//   '<claude model>'  -> `claude --print --model <model>` on the Code subscription
+// Default switched to local llama3.1:8b on 2026-08-24: haiku was burning
+// ~100 subscription requests/day from the Stop hook + mem catchup timers.
+const EXTRACT_MODEL = process.env.LMF4_EXTRACT_MODEL || 'ollama:llama3.1:8b';
+const OLLAMA_URL = process.env.OLLAMA_HOST?.startsWith('http') ? process.env.OLLAMA_HOST : 'http://localhost:11434';
+const MAX_EXTRACT_FAILURES = 2; // after this many failed attempts, stop retrying the transcript
 
 // ─── Interfaces ────────────────────────────────────────────────────
 
@@ -81,6 +85,7 @@ interface ExtractionRecord {
   extractedAt?: string;
   failedAt?: string;
   retryAfter?: string;
+  failures?: number;
 }
 
 // ─── Ensure memory directories exist ───────────────────────────────
@@ -200,11 +205,19 @@ function markAsFailed(convPath: string): void {
   try {
     const tracker = loadExtractionTracker();
     const now = new Date();
-    tracker[convPath] = {
-      size: statSync(convPath).size,
-      failedAt: now.toISOString(),
-      retryAfter: new Date(now.getTime() + 86400000).toISOString()
-    };
+    const failures = (tracker[convPath]?.failures ?? 0) + 1;
+    if (failures >= MAX_EXTRACT_FAILURES) {
+      // Terminal: stop re-feeding this transcript every catch-up run.
+      logExtract(`GAVE UP: ${convPath} failed ${failures}x, no more retries`);
+      tracker[convPath] = { size: statSync(convPath).size, extractedAt: now.toISOString(), failedAt: now.toISOString(), failures };
+    } else {
+      tracker[convPath] = {
+        size: statSync(convPath).size,
+        failedAt: now.toISOString(),
+        retryAfter: new Date(now.getTime() + 86400000).toISOString(),
+        failures
+      };
+    }
     saveExtractionTracker(tracker);
   } catch {}
 }
@@ -442,6 +455,30 @@ async function extractWithClaude(messages: string): Promise<string | null> {
       '\n\n---\n\nExtract the key information from this AI coding session transcript:\n\n' +
       truncated;
 
+    if (EXTRACT_MODEL.startsWith('ollama:')) {
+      const model = EXTRACT_MODEL.slice('ollama:'.length);
+      // 60k chars ≈ 15-18k tokens; 8B q4 + 20k ctx fits the 6GB 4050 on vic.
+      const res = await fetch(`${OLLAMA_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model, prompt: stdinPayload, stream: false, keep_alive: '30m',
+          options: { num_ctx: 20480, temperature: 0.2 },
+        }),
+        signal: AbortSignal.timeout(600000),
+      });
+      if (!res.ok) throw new Error(`ollama ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      const data = await res.json() as { response?: string };
+      const out = (data.response || '').trim();
+      if (out.length > 50) {
+        console.error(`[SessionExtract] Ollama extraction successful (${out.length} chars, ${model})`);
+        logExtract(`SUCCESS: extraction=${out.length} chars backend=ollama:${model}`);
+        return out;
+      }
+      console.error('[SessionExtract] Ollama empty/short response');
+      return null;
+    }
+
     // Strip ANTHROPIC_API_KEY so the CLI uses the Claude Code subscription
     const env = { ...process.env };
     delete env.ANTHROPIC_API_KEY;
@@ -450,6 +487,9 @@ async function extractWithClaude(messages: string): Promise<string | null> {
     // child ever inherits or reloads user settings unexpectedly.
     env.LMF4_HEADLESS = '1';
 
+    // --setting-sources '' disables hooks in the child — without it, the
+    // child's Stop hooks respawn SessionExtract recursively (fork bomb,
+    // 66 headless claudes / 137 load on vic, 2026-08-20)
     const result = execSync(
       `claude --print --model ${EXTRACT_MODEL} --output-format text --setting-sources ''`,
       {
@@ -530,6 +570,17 @@ async function extractAndAppend(conversationPath: string, cwd: string): Promise<
     }
 
     const messages = extractMessages(conversationPath);
+
+    // Never extract our own extraction children. `claude --print` (the old
+    // haiku backend) wrote its transcript into projects/ like any session, so
+    // SessionExtract was re-extracting the extractor: 3,960 such files and
+    // 153 duplicate/garbage LoA entries found 2026-08-24. Terminal skip.
+    if (/^\s*# IDENTITY and PURPOSE/m.test(messages.slice(0, 2000))) {
+      console.error('[SessionExtract] Extraction-child transcript, skipping');
+      logExtract(`SKIPPED: extraction-child transcript ${conversationPath}`);
+      markAsExtracted(conversationPath);
+      return false;
+    }
     if (messages.length < 500) {
       console.error('[SessionExtract] Conversation too short, skipping');
       // Short transcripts are a terminal, successful outcome. Track them so
@@ -673,7 +724,11 @@ function writeToDb(extracted: string, project: string, date: string, sessionId: 
     const lines = decisionsMatch[1].split('\n')
       .filter((l: string) => l.trim().startsWith('-'))
       .map((l: string) => l.replace(/^-\s*/, '').replace(/\*\*/g, '').trim())
-      .filter((l: string) => l.length > 5);
+      .filter((l: string) => l.length > 5)
+      // Drop non-decisions the extractor emits when a session had none
+      // ("None explicitly made", "N/A", ...). 254 of these polluted recall
+      // ranking until superseded on 2026-08-24.
+      .filter((l: string) => !/^(none\b|no (specific |new |explicit |concrete )?decisions?\b|not applicable|n\/a\b|-$)/i.test(l.trim()));
 
     for (const line of lines) {
       const parts = line.split(':');

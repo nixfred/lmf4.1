@@ -90,10 +90,13 @@ export function embeddingToBlob(embedding: number[]): Buffer {
  * Convert SQLite BLOB back to embedding array
  */
 export function blobToEmbedding(blob: Buffer | Uint8Array): number[] {
-  const buf = blob instanceof Buffer ? blob : Buffer.from(blob);
-  const embedding: number[] = [];
-  for (let i = 0; i < buf.length; i += 4) {
-    embedding.push(buf.readFloatLE(i));
+  // bun:sqlite returns BLOBs as Uint8Array in Bun >= 1.2. DataView reads both
+  // Buffer and Uint8Array in place — no Buffer.from() copy per row, which
+  // matters when a hybrid search scans every embedding in the table.
+  const view = new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
+  const embedding: number[] = new Array(blob.byteLength >> 2);
+  for (let i = 0; i < embedding.length; i++) {
+    embedding[i] = view.getFloat32(i * 4, true);
   }
   return embedding;
 }
