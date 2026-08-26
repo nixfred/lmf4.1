@@ -17,21 +17,38 @@ export interface EmbeddingResult {
 /**
  * Generate embedding for text using Ollama (local, optional).
  */
+// nomic-embed-text has an 8192-token context, but Ollama's llama.cpp server rejects any
+// single input larger than its *physical batch* (n_batch, default 2048 tokens) with
+// HTTP 500 "input (N tokens) is too large to process". 2026-08-25: loa_entries 6/19/1097
+// (13k–75k chars) failed on every `mem embed` run because of this. ~3.7 chars/token for
+// English prose, so 7000 chars ≈ 1900 tokens stays under the batch. Override with
+// EMBED_MAX_CHARS if the server is started with a bigger OLLAMA_NUM_BATCH / num_batch.
+const EMBED_MAX_CHARS = Number(process.env.EMBED_MAX_CHARS) || 7000;
+
 export async function embed(text: string): Promise<EmbeddingResult> {
-  // Truncate very long text (nomic-embed-text has 8192 token context)
-  const truncated = text.slice(0, 30000); // ~8K tokens rough estimate
+  let truncated = text.slice(0, EMBED_MAX_CHARS);
+  let response: Response;
 
-  const response = await fetch(`${OLLAMA_URL}/api/embeddings`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: EMBEDDING_MODEL,
-      prompt: truncated
-    })
-  });
+  // Retry with progressively shorter input if the server still says it's too large
+  // (dense code/JSON tokenizes at ~2.5 chars/token, so the 7000-char cap can overshoot).
+  for (let attempt = 0; ; attempt++) {
+    response = await fetch(`${OLLAMA_URL}/api/embeddings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: EMBEDDING_MODEL,
+        prompt: truncated
+      })
+    });
+    if (response.ok) break;
 
-  if (!response.ok) {
-    throw new Error(`Ollama embedding failed: ${response.status} ${response.statusText}`);
+    const body = await response.text().catch(() => '');
+    const tooLarge = response.status === 500 && /too large|batch size|exceeds/i.test(body);
+    if (tooLarge && attempt < 3 && truncated.length > 500) {
+      truncated = truncated.slice(0, Math.floor(truncated.length / 2));
+      continue;
+    }
+    throw new Error(`Ollama embedding failed: ${response.status} ${response.statusText}${body ? ` — ${body.slice(0, 120)}` : ''}`);
   }
 
   const data = await response.json() as { embedding: number[] };
