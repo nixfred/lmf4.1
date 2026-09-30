@@ -247,7 +247,7 @@ echo ""
 echo "=== SANITIZATION SCAN ==="
 echo ""
 echo "--- TEST no personal data in repo ---"
-LEAK=$(cd "$LMF4_DIR" && git grep -iE '\b(larry|blueally|monolith|100\.95\.128)\b' -- ':!tests/system-test.sh' || true)
+LEAK=$(cd "$LMF4_DIR" && git grep -iE '\b(larry|blueally|monolith|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+)\b' -- ':!tests/system-test.sh' || true)
 if [ -z "$LEAK" ]; then
     pass "no personal-data leak in tracked files"
 else

@@ -457,7 +457,7 @@ async function extractWithClaude(messages: string): Promise<string | null> {
 
     if (EXTRACT_MODEL.startsWith('ollama:')) {
       const model = EXTRACT_MODEL.slice('ollama:'.length);
-      // 60k chars ≈ 15-18k tokens; 8B q4 + 20k ctx fits the 6GB 4050 on vic.
+      // 60k chars ≈ 15-18k tokens; 8B q4 + 20k ctx fits a 6GB laptop GPU.
       const res = await fetch(`${OLLAMA_URL}/api/generate`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -489,7 +489,7 @@ async function extractWithClaude(messages: string): Promise<string | null> {
 
     // --setting-sources '' disables hooks in the child — without it, the
     // child's Stop hooks respawn SessionExtract recursively (fork bomb,
-    // 66 headless claudes / 137 load on vic, 2026-08-20)
+    // 66 headless claudes / 137 load on one host, 2026-08-20)
     const result = execSync(
       `claude --print --model ${EXTRACT_MODEL} --output-format text --setting-sources ''`,
       {
